@@ -1,49 +1,65 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LIFF-GAS 連携テスト</title>
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-</head>
-<body style="padding: 20px; font-family: sans-serif; line-height: 1.6;">
-  <h2>LIFF-GAS 連携テスト</h2>
-  <div id="status" style="padding: 10px; background: #f0f0f0; border-radius: 5px;">初期化中...</div>
-  <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap;"></div>
+<div class="card">
+  <h2 id="display-title">読み込み中...</h2>
+  <div id="msg">LINE連携を確認しています...</div>
 
-  <script>
-    const liffId = "2009266487-GEiMe9Ei";
-    const gasUrl = "https://script.google.com/macros/s/AKfycbxotMGrvWrOq0j8RJ3tfntjiCBulOobkPOPTrKGO7dpp_UESD-U8KYcNI8YnBH_C91q/exec"; 
+  <div id="area-attendance" style="display:none;">
+    <button class="btn btn-ok" onclick="send('○')">参加 (○)</button>
+    <button class="btn btn-maybe" onclick="send('△')">遅刻・早退 (△)</button>
+    <button class="btn btn-no" onclick="send('×')">欠席 (×)</button>
+  </div>
 
-    window.onload = function() {
-      liff.init({ liffId: liffId })
-        .then(() => {
-          document.getElementById('status').innerText = "LIFF初期化成功！データ取得中...";
-          if (!liff.isLoggedIn()) {
-            liff.login();
-          } else {
-            const uid = liff.getContext().userId;
-            
-            // GASへデータを問い合わせる
-            fetch(`${gasUrl}?uid=${uid}`)
-              .then(res => res.json())
-              .then(data => {
-                document.getElementById('status').innerText = "GAS連携成功！";
-                document.getElementById('result').innerText = 
-                  `取得したUID: ${data.uid}\nGASからの返信: ${data.message}`;
-              })
-              .catch(err => {
-                document.getElementById('status').innerText = "GAS通信エラー";
-                document.getElementById('result').innerText = err;
-              });
-          }
-        })
-        .catch(err => {
-          document.getElementById('status').innerText = "LIFFエラー: " + err;
-        });
-    };
-  </script>
-</body>
-</html>
-</html>
+  <div id="area-registration" style="display:none;">
+    <p>名簿から自分の名前を選んでください：</p>
+    <select id="name-list" style="width:100%; padding:10px; margin-bottom:15px;"></select>
+    <button class="btn-ok" style="width:100%;" onclick="link()">この名前で登録する</button>
+  </div>
+</div>
 
+<script>
+  // ★GASのURLをセットしてください
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbxotMGrvWrOq0j8RJ3tfntjiCBulOobkPOPTrKGO7dpp_UESD-U8KYcNI8YnBH_C91q/exec";
+
+  async function init() {
+    await liff.init({ liffId: "2009266487-GEiMe9Ei" });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    
+    const profile = await liff.getProfile();
+    const res = await fetch(`${GAS_URL}?uid=${profile.userId}&action=get`);
+    const data = await res.json();
+
+    if (data.status === "success") {
+      document.getElementById('display-title').innerText = `こんにちは、${data.name} さん`;
+      document.getElementById('msg').innerText = "本日の練習の出欠を選択してください。";
+      document.getElementById('area-attendance').style.display = "block";
+    } else if (data.status === "unregistered") {
+      document.getElementById('display-title').innerText = "初回利用者さま";
+      document.getElementById('msg').innerText = "名簿との紐付けが必要です。";
+      document.getElementById('area-registration').style.display = "block";
+      const select = document.getElementById('name-list');
+      data.list.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.id; opt.text = item.name;
+        select.appendChild(opt);
+      });
+    }
+  }
+
+  async function link() {
+    const profile = await liff.getProfile();
+    const fid = document.getElementById('name-list').value;
+    const res = await fetch(`${GAS_URL}?uid=${profile.userId}&action=link&family_id=${fid}`);
+    const data = await res.json();
+    alert(data.message);
+    location.reload(); // 登録後は再読込して出欠画面へ
+  }
+
+  async function send(st) {
+    const profile = await liff.getProfile();
+    document.getElementById('msg').innerText = "スプレッドシートに記録中...";
+    const res = await fetch(`${GAS_URL}?uid=${profile.userId}&action=update&status=${st}`);
+    const data = await res.json();
+    alert(data.message);
+    liff.closeWindow();
+  }
+  window.onload = init;
+</script>
