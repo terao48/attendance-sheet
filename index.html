@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    /* 過去fix版のスタイルを完全踏襲 */
     :root {
       --main-green: #27ae60; --sat-blue: #2980b9; --sun-red: #d35400;
       --bg-light: #f4f7f8; --my-row-bg: #fffbe6; --name-col-width: 70px;
@@ -33,7 +32,6 @@
     .status-- { color: #ccc; }
     #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; display: none; z-index: 1000; }
     
-    /* 初回登録用UI */
     #registration-view { display: none; padding: 20px; text-align: center; background: white; border-radius: 8px; margin: 20px; }
     select { width: 100%; padding: 10px; margin: 15px 0; font-size: 16px; }
     .btn-link { background: var(--main-green); color: white; border: none; padding: 12px 20px; border-radius: 5px; width: 100%; font-size: 16px; cursor: pointer; }
@@ -58,8 +56,7 @@
   <div id="toast"></div>
 
 <script>
-  // ★GASのURLをセット
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbyqpBGPUDoYZshFI65M-scbhuOvBYITQIthqo60UT05paL3n6A0rkqVAfOgqpuyxOJ5/exec"; 
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbyqpBGPUDoYZshFI65M-scbhuOvBYITQIthqo60UT05paL3n6A0rkqVAfOgqpuyxOJ5/exec"; // ★必ず変更してください
   const LIFF_ID = "2009266487-GEiMe9Ei";
 
   let MY_LINE_ID = "";
@@ -77,7 +74,6 @@
       const profile = await liff.getProfile();
       MY_LINE_ID = profile.userId;
 
-      // GASからデータを取得
       const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get`);
       const data = await res.json();
 
@@ -97,7 +93,18 @@
         });
       }
     } catch (e) {
-      showToast("エラーが発生しました");
+      // ★エラーの真犯人を画面に表示するロジック
+      document.getElementById("registration-view").style.display = "none";
+      document.getElementById("main-view").style.display = "flex";
+      
+      let errorText = e.message;
+      if (errorText.includes("weekLabel")) {
+        errorText = "【原因A】GASのバージョン不一致です。GASの「新しいデプロイ」を行ってください。";
+      } else if (errorText.includes("Unexpected token '<'")) {
+        errorText = "【原因B】GAS内部でシート読み込みに失敗しました。GASの「実行数」ログを確認してください。";
+      }
+      
+      document.getElementById("weekTitle").innerHTML = `<span style="color:red; font-size:14px; line-height:1.5;">エラー発生:<br>${errorText}</span>`;
     }
   }
 
@@ -133,7 +140,6 @@
       const isMe = (f.lineId === MY_LINE_ID);
       html += `<tr class="${isMe ? 'my-row' : ''}"><td class="name-cell">${f.name}</td>`;
       f.statuses.forEach((s, i) => {
-        // ★タップアクション
         html += `<td class="status-cell status-${s}" onclick="toggle(${fIdx},${i})">${s}</td>`;
       });
       html += "</tr>";
@@ -149,7 +155,6 @@
     render(); 
     showToast("更新中...");
     
-    // GASへ保存リクエスト
     const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=update&familyId=${rawData[fIdx].id}&dateLabel=${encodeURIComponent(days[dIdx])}&status=${encodeURIComponent(next)}`);
     const data = await res.json();
     showToast(data.message);
@@ -165,4 +170,3 @@
 </script>
 </body>
 </html>
-
