@@ -7,46 +7,45 @@
   <style>
     :root {
       --main-green: #27ae60; --sat-blue: #2980b9; --sun-red: #d35400;
-      --bg-light: #f4f7f8; --my-row-bg: #fffbe6; --name-col-width: 80px;
+      --bg-light: #f4f7f8; --my-row-bg: #fffbe6; --name-col-width: 70px;
     }
-    body { font-family: sans-serif; margin: 0; background: var(--bg-light); color: #333; }
-    .container { padding: 5px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
-    h3 { text-align: center; font-size: 16px; margin: 10px 0; }
-    .table-wrapper { flex: 1; overflow-y: auto; overflow-x: hidden; border-radius: 8px; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    body { font-family: sans-serif; margin: 0; background: var(--bg-light); color: #333; overflow: hidden; }
+    .container { padding: 4px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+    h3 { text-align: center; font-size: 18px; margin: 6px 0; }
+    .table-wrapper { flex: 1; overflow-y: auto; overflow-x: hidden; border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     thead { position: sticky; top: 0; z-index: 10; }
-    th { background: var(--main-green); color: white; padding: 5px 0; font-size: 12px; }
+    th { background: var(--main-green); color: white; padding: 4px 0; font-size: 12px; border: none; font-weight: bold; }
     .name-col-head { width: var(--name-col-width); }
     th.sat { background: var(--sat-blue); } 
     th.sun { background: var(--sun-red); } 
-    .count-box { font-size: 10px; margin-top: 2px; font-weight: normal; }
-    
-    /* 行の高さ：文字サイズを維持しつつ、余白を調整 */
-    td { border-bottom: 1px solid #eee; height: 35px; text-align: center; vertical-align: middle; }
-    .name-cell { width: var(--name-col-width); padding: 0 4px; font-weight: bold; font-size: 13px; text-align: left; background: #fafafa; border-right: 1px solid #ddd; }
+    .count-box { font-size: 10px; margin-top: 3px; padding: 2px 4px; background: rgba(0,0,0,0.15); font-weight: normal; line-height: 1.3; }
+    .count-row { display: flex; justify-content: space-between; }
+    .count-num { font-weight: bold; font-family: monospace; }
+    td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
+    .name-cell { width: var(--name-col-width); padding: 0 2px; font-weight: bold; font-size: 12px; text-align: left; background: #fafafa; border-right: 2px solid var(--main-green); word-break: break-all; }
     .my-row { background-color: var(--my-row-bg) !important; }
-    .status-cell { font-size: 20px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .status-cell { font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
     
-    /* 表示専用モード時のスタイル設定 */
+    /* ★閲覧モード時はカーソルを通常に戻す */
     .view-mode .status-cell { cursor: default; }
 
     .status-〇 { color: var(--main-green); font-weight: bold; } 
     .status-△ { color: #f39c12; font-weight: bold; }
     .status-× { color: #7f8c8d; font-weight: bold; }
     .status-- { color: #ccc; }
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; display: none; z-index: 1000; }
     
-    #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; display: none; z-index: 1000; }
-    #registration-view { display: none; padding: 20px; text-align: center; }
-    .btn-link { background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 5px; width: 100%; font-size: 16px; margin-top: 10px; }
+    #registration-view { display: none; padding: 20px; text-align: center; background: white; border-radius: 8px; margin: 20px; }
+    select { width: 100%; padding: 10px; margin: 15px 0; font-size: 16px; }
+    .btn-link { background: var(--main-green); color: white; border: none; padding: 12px 20px; border-radius: 5px; width: 100%; font-size: 16px; cursor: pointer; }
   </style>
 </head>
-<body id="bodyTag">
-  
-  <div id="registration-view">
+<body id="bodyTag"> <div id="registration-view">
     <h3>初回登録</h3>
-    <p style="font-size:14px;">名簿から自分の名前を選んでください。</p>
-    <select id="name-list" style="width:100%; padding:10px; font-size:16px;"></select>
-    <button class="btn-link" onclick="link()">登録を完了する</button>
+    <p style="font-size: 14px;">名簿から選択してください</p>
+    <select id="name-list"></select>
+    <button class="btn-link" onclick="link()">登録する</button>
   </div>
 
   <div class="container" id="main-view" style="display:none;">
@@ -59,25 +58,23 @@
   <div id="toast"></div>
 
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbzv2Rt6QfjdDQjfHUFhTgAyv4x8Iagh88AMxcGXn5bgv40sOZZoNm5_I5QIaX7jFN_I/exec"; 
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbzv2Rt6QfjdDQjfHUFhTgAyv4x8Iagh88AMxcGXn5bgv40sOZZoNm5_I5QIaX7jFN_I/exec"; // ★必ず変更してください
   const LIFF_ID = "2009266487-GEiMe9Ei";
 
   let MY_LINE_ID = "";
-  let IS_VIEW_MODE = false; // 表示専用モードフラグ
+  let IS_VIEW_MODE = false; // ★モード判定フラグ
   const UI_CONFIG = {
     signs: ["〇", "△", "×", "-"],
+    labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
   };
   let rawData = []; 
   let days = [];    
 
   async function init() {
-    // URLパラメータからモードを取得
+    // ★URLからモードを判定
     const params = new URLSearchParams(window.location.search);
     IS_VIEW_MODE = params.get('mode') === 'view';
-    
-    if (IS_VIEW_MODE) {
-      document.getElementById("bodyTag").classList.add("view-mode");
-    }
+    if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
 
     try {
       await liff.init({ liffId: LIFF_ID });
@@ -85,25 +82,25 @@
       const profile = await liff.getProfile();
       MY_LINE_ID = profile.userId;
 
-      const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get`);
+      // ★キャッシュ対策：現在時刻を付与して常に最新データを取得
+      const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get&t=${new Date().getTime()}`);
       const data = await res.json();
 
       if (data.status === "success") {
         document.getElementById("main-view").style.display = "flex";
-        document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
-        days = data.data.dates;
         
-        // モードによる並び替えの分岐
         if (IS_VIEW_MODE) {
-          // 表示モード：名簿順（スプレッドシートの並び）のまま
+          // ★閲覧モード：タイトル変更＆名簿順を維持
+          document.getElementById("weekTitle").innerText = data.data.weekLabel + " (閲覧用)";
           rawData = data.data.families;
         } else {
-          // 入力モード：自分を一番上に持ってくる
+          // ★入力モード：自分の名前を一番上にする
+          document.getElementById("weekTitle").innerText = data.data.weekLabel;
           const myData = data.data.families.find(f => f.lineId === MY_LINE_ID);
           const otherData = data.data.families.filter(f => f.lineId !== MY_LINE_ID);
           rawData = myData ? [myData, ...otherData] : data.data.families;
         }
-        
+
         render();
       } else if (data.status === "unregistered") {
         document.getElementById("registration-view").style.display = "block";
@@ -115,8 +112,17 @@
         });
       }
     } catch (e) {
-      console.error(e);
-      document.getElementById("weekTitle").innerText = "エラーが発生しました";
+      document.getElementById("registration-view").style.display = "none";
+      document.getElementById("main-view").style.display = "flex";
+      
+      let errorText = e.message;
+      if (errorText.includes("weekLabel")) {
+        errorText = "【原因A】GASのバージョン不一致です。GASの「新しいデプロイ」を行ってください。";
+      } else if (errorText.includes("Unexpected token '<'")) {
+        errorText = "【原因B】GAS内部でシート読み込みに失敗しました。GASの「実行数」ログを確認してください。";
+      }
+      
+      document.getElementById("weekTitle").innerHTML = `<span style="color:red; font-size:14px; line-height:1.5;">エラー発生:<br>${errorText}</span>`;
     }
   }
 
@@ -136,10 +142,15 @@
       f.statuses.forEach((s, i) => { if (totals[i].hasOwnProperty(s)) totals[i][s]++; });
     });
 
-    let html = `<thead><tr><th class="name-col-head">氏名</th>`;
+    let html = `<thead><tr><th class="name-col-head">団員父兄</th>`;
     days.forEach((d, i) => {
       let cls = (d.includes("日") || d.includes("祝")) ? "sun" : d.includes("土") ? "sat" : "";
-      html += `<th class="${cls}">${d.replace("月","").replace("日","")}<div class="count-box">〇:${totals[i]["〇"]}</div></th>`;
+      let countHtml = `<div class="count-box">`;
+      UI_CONFIG.signs.forEach(s => {
+        countHtml += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span class="count-num">${totals[i][s]}</span></div>`;
+      });
+      countHtml += `</div>`;
+      html += `<th class="${cls}">${d}${countHtml}</th>`;
     });
     html += "</tr></thead><tbody>";
 
@@ -147,9 +158,9 @@
       const isMe = (f.lineId === MY_LINE_ID);
       html += `<tr class="${isMe ? 'my-row' : ''}"><td class="name-cell">${f.name}</td>`;
       f.statuses.forEach((s, i) => {
-        // 表示モードならonclickを無効化
-        const clickHandler = IS_VIEW_MODE ? "" : `onclick="toggle(${fIdx},${i})"`;
-        html += `<td class="status-cell status-${s}" ${clickHandler}>${s}</td>`;
+        // ★閲覧モード時はonclick属性を付与しない
+        const clickAttr = IS_VIEW_MODE ? "" : `onclick="toggle(${fIdx},${i})"`;
+        html += `<td class="status-cell status-${s}" ${clickAttr}>${s}</td>`;
       });
       html += "</tr>";
     });
@@ -157,7 +168,8 @@
   }
 
   async function toggle(fIdx, dIdx) {
-    if (IS_VIEW_MODE) return; // 念のためのガード
+    // ★【スマホ対策】関数内でもブロック。閲覧モードなら何もしないで終了
+    if (IS_VIEW_MODE) return; 
 
     const cycle = UI_CONFIG.signs;
     let next = cycle[(cycle.indexOf(rawData[fIdx].statuses[dIdx]) + 1) % cycle.length];
@@ -174,7 +186,7 @@
   function showToast(msg) {
     const t = document.getElementById("toast");
     t.innerText = msg; t.style.display = "block";
-    setTimeout(() => t.style.display = "none", 1200);
+    setTimeout(() => t.style.display = "none", 1500);
   }
 
   window.onload = init;
