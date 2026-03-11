@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    /* デザインはOK版を完全に維持 */
     :root {
       --main-green: #27ae60; --sat-blue: #2980b9; --sun-red: #d35400;
       --bg-light: #f4f7f8; --my-row-bg: #fffbe6; --name-col-width: 70px;
@@ -57,7 +56,7 @@
   <div id="toast"></div>
 
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbzv2Rt6QfjdDQjfHUFhTgAyv4x8Iagh88AMxcGXn5bgv40sOZZoNm5_I5QIaX7jFN_I/exec"; // ★ここをご自身のURLに変更してください
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbzv2Rt6QfjdDQjfHUFhTgAyv4x8Iagh88AMxcGXn5bgv40sOZZoNm5_I5QIaX7jFN_I/exec"; // ★要変更
   const LIFF_ID = "2009266487-GEiMe9Ei";
 
   let MY_LINE_ID = "";
@@ -69,7 +68,12 @@
     labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
   };
 
-async function init() {
+  // 乱数と時刻を組み合わせた強力なキャッシュバスター
+  function getAntiCacheKey() {
+    return `v=${new Date().getTime()}_${Math.random().toString(36).substring(2, 15)}`;
+  }
+
+  async function init() {
     const params = new URLSearchParams(window.location.search);
     IS_VIEW_MODE = params.get('mode') === 'view';
     if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
@@ -81,25 +85,20 @@ async function init() {
       try {
         const profile = await liff.getProfile();
         MY_LINE_ID = profile.userId;
-      } catch (profileError) {
-        if (profileError.message.includes("expired") || profileError.message.includes("token")) {
-          liff.logout();
-          liff.login();
-          return;
-        } else { throw profileError; }
+      } catch (e) {
+        if (e.message.includes("expired") || e.message.includes("token")) {
+          liff.logout(); liff.login(); return;
+        }
+        throw e;
       }
 
-      // ★【最強化策】URLの末尾に、秒単位だけでなく「ミリ秒」単位の乱数を付与
-      // さらに headers にキャッシュ無効化命令を詰め込む
-      const antiCacheKey = Date.now().toString() + Math.random().toString(36).substring(7);
-      const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get&v=${antiCacheKey}`, {
+      // getAntiCacheKey() を付与し、かつ cache: 'no-store' で取得
+      const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get&${getAntiCacheKey()}`, {
         method: 'GET',
-        cache: 'no-store', // キャッシュを一切保存させない
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
+        cache: 'no-store'
       });
+      
+      if (!res.ok) throw new Error("Network response was not ok");
       const data = await res.json();
 
       if (data.status === "success" && data.data) {
@@ -130,30 +129,21 @@ async function init() {
       document.getElementById("main-view").style.display = "flex";
       document.getElementById("weekTitle").innerHTML = `<span style="color:red; font-size:14px;">エラー: ${e.message}</span>`;
     }
-  }  
+  }
 
-async function link() {
+  async function link() {
     const btn = document.querySelector('.btn-link');
     const select = document.getElementById("name-list");
     if (!select.value) return;
-
-    btn.innerText = "登録中...";
-    btn.disabled = true;
-
+    btn.innerText = "登録中..."; btn.disabled = true;
     try {
-      const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${select.value}&t=${new Date().getTime()}`);
-      await res.json();
+      await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${select.value}&${getAntiCacheKey()}`);
       btn.innerText = "登録完了！";
-      
-      // 1秒待機して確実に書き込みを待ってからリロード
-      setTimeout(() => {
-        window.location.href = window.location.origin + window.location.pathname;
-      }, 1200);
-    } catch (e) {
-      alert("登録失敗: " + e.message);
-      btn.innerText = "登録する";
-      btn.disabled = false;
-    }
+      setTimeout(() => { 
+        // パラメータをクリアしてリロード
+        window.location.href = window.location.origin + window.location.pathname + "?t=" + new Date().getTime(); 
+      }, 1000);
+    } catch (e) { alert("登録失敗: " + e.message); btn.innerText = "登録する"; btn.disabled = false; }
   }
 
   function render() {
@@ -161,13 +151,11 @@ async function link() {
     const totals = days.map(() => {
       let obj = {}; UI_CONFIG.signs.forEach(s => obj[s] = 0); return obj;
     });
-
     rawData.forEach(f => {
       if (f.statuses) {
         f.statuses.forEach((s, i) => { if (totals[i] && totals[i].hasOwnProperty(s)) totals[i][s]++; });
       }
     });
-
     let html = `<thead><tr><th class="name-col-head">団員父兄</th>`;
     days.forEach((d, i) => {
       let cls = (d.includes("日") || d.includes("祝")) ? "sun" : d.includes("土") ? "sat" : "";
@@ -179,7 +167,6 @@ async function link() {
       html += `<th class="${cls}">${d}${countHtml}</th>`;
     });
     html += "</tr></thead><tbody>";
-
     rawData.forEach((f, fIdx) => {
       const isMe = (f.lineId === MY_LINE_ID);
       html += `<tr class="${isMe ? 'my-row' : ''}"><td class="name-cell">${f.name}</td>`;
@@ -199,215 +186,15 @@ async function link() {
     rawData[fIdx].statuses[dIdx] = next; 
     render(); 
     showToast("更新中...");
-    
     try {
-      const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=update&familyId=${rawData[fIdx].id}&dateLabel=${encodeURIComponent(days[dIdx])}&status=${encodeURIComponent(next)}&t=${new Date().getTime()}`);
-      const data = await res.json();
-      showToast(data.message);
-    } catch (e) {
-      showToast("通信エラー");
-    }
+      await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=update&familyId=${rawData[fIdx].id}&dateLabel=${encodeURIComponent(days[dIdx])}&status=${encodeURIComponent(next)}&${getAntiCacheKey()}`);
+      showToast("更新完了");
+    } catch (e) { showToast("通信エラー"); }
   }
 
   function showToast(msg) {
     const t = document.getElementById("toast");
-    if (!t) return;
-    t.innerText = msg; t.style.display = "block";
-    setTimeout(() => t.style.display = "none", 1500);
-  }
-
-  window.onload = init;
-</script>
-</body>
-</html><!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    /* CSSはご提示いただいた「OK版」のデザインを完全に踏襲しています */
-    :root {
-      --main-green: #27ae60; --sat-blue: #2980b9; --sun-red: #d35400;
-      --bg-light: #f4f7f8; --my-row-bg: #fffbe6; --name-col-width: 70px;
-    }
-    body { font-family: sans-serif; margin: 0; background: var(--bg-light); color: #333; overflow: hidden; }
-    .container { padding: 4px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
-    h3 { text-align: center; font-size: 18px; margin: 6px 0; }
-    .table-wrapper { flex: 1; overflow-y: auto; overflow-x: hidden; border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    thead { position: sticky; top: 0; z-index: 10; }
-    th { background: var(--main-green); color: white; padding: 4px 0; font-size: 12px; border: none; font-weight: bold; }
-    .name-col-head { width: var(--name-col-width); }
-    th.sat { background: var(--sat-blue); } 
-    th.sun { background: var(--sun-red); } 
-    .count-box { font-size: 10px; margin-top: 3px; padding: 2px 4px; background: rgba(0,0,0,0.15); font-weight: normal; line-height: 1.3; }
-    .count-row { display: flex; justify-content: space-between; }
-    .count-num { font-weight: bold; font-family: monospace; }
-    td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
-    .name-cell { width: var(--name-col-width); padding: 0 2px; font-weight: bold; font-size: 12px; text-align: left; background: #fafafa; border-right: 2px solid var(--main-green); word-break: break-all; }
-    .my-row { background-color: var(--my-row-bg) !important; }
-    .status-cell { font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-    
-    .view-mode .status-cell { cursor: default; } /* 表示モード時は指マークを出さない */
-
-    .status-〇 { color: var(--main-green); font-weight: bold; } 
-    .status-△ { color: #f39c12; font-weight: bold; }
-    .status-× { color: #7f8c8d; font-weight: bold; }
-    .status-- { color: #ccc; }
-    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; display: none; z-index: 1000; }
-    #registration-view { display: none; padding: 20px; text-align: center; background: white; border-radius: 8px; margin: 20px; }
-    select { width: 100%; padding: 10px; margin: 15px 0; font-size: 16px; }
-    .btn-link { background: var(--main-green); color: white; border: none; padding: 12px 20px; border-radius: 5px; width: 100%; font-size: 16px; cursor: pointer; }
-  </style>
-</head>
-<body id="bodyTag">
-  
-  <div id="registration-view">
-    <h3>初回登録</h3>
-    <p style="font-size: 14px;">名簿から選択してください</p>
-    <select id="name-list"></select>
-    <button class="btn-link" onclick="link()">登録する</button>
-  </div>
-
-  <div class="container" id="main-view" style="display:none;">
-    <h3 id="weekTitle">読込中...</h3>
-    <div class="table-wrapper">
-      <table id="mainTable"></table>
-    </div>
-  </div>
-  
-  <div id="toast"></div>
-
-<script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbzv2Rt6QfjdDQjfHUFhTgAyv4x8Iagh88AMxcGXn5bgv40sOZZoNm5_I5QIaX7jFN_I/exec"; // ★必ず変更してください
-  const LIFF_ID = "2009266487-GEiMe9Ei";
-
-  let MY_LINE_ID = "";
-  let IS_VIEW_MODE = false;
-  const UI_CONFIG = {
-    signs: ["〇", "△", "×", "-"],
-    labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
-  };
-  let rawData = []; 
-  let days = [];    
-
-  async function init() {
-    const params = new URLSearchParams(window.location.search);
-    IS_VIEW_MODE = params.get('mode') === 'view';
-    if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
-
-    try {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) { liff.login(); return; }
-      const profile = await liff.getProfile();
-      MY_LINE_ID = profile.userId;
-
-      // ★同期対策：URLの末尾に時刻を付け、さらに cache: "no-cache" を追加して強制読み込み
-      const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get&t=${new Date().getTime()}`, {
-        cache: "no-cache"
-      });
-      const data = await res.json();
-
-      if (data.status === "success" && data.data) {
-        document.getElementById("main-view").style.display = "flex";
-        
-        // データの代入（ここが重要です）
-        days = data.data.dates || [];
-        const families = data.data.families || [];
-
-        document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
-
-        if (IS_VIEW_MODE) {
-          rawData = families;
-        } else {
-          const myData = families.find(f => f.lineId === MY_LINE_ID);
-          const otherData = families.filter(f => f.lineId !== MY_LINE_ID);
-          rawData = myData ? [myData, ...otherData] : families;
-        }
-
-        render();
-      } else if (data.status === "unregistered") {
-        document.getElementById("registration-view").style.display = "block";
-        const select = document.getElementById("name-list");
-        data.list.forEach(item => {
-          const opt = document.createElement("option");
-          opt.value = item.id; opt.text = item.name;
-          select.appendChild(opt);
-        });
-      }
-    } catch (e) {
-      console.error(e);
-      document.getElementById("weekTitle").innerHTML = `<span style="color:red; font-size:14px;">エラー: ${e.message}</span>`;
-    }
-  }
-
-  function render() {
-    if (!days || days.length === 0) return;
-
-    // 集計初期化：daysの長さに基づいて確実に作成
-    const totals = [];
-    for (let i = 0; i < days.length; i++) {
-      let obj = {};
-      UI_CONFIG.signs.forEach(s => obj[s] = 0);
-      totals.push(obj);
-    }
-
-    // 集計処理：安全ガード付き
-    rawData.forEach(f => {
-      if (f.statuses) {
-        f.statuses.forEach((s, i) => {
-          if (totals[i] && totals[i].hasOwnProperty(s)) {
-            totals[i][s]++;
-          }
-        });
-      }
-    });
-
-    let html = `<thead><tr><th class="name-col-head">団員父兄</th>`;
-    days.forEach((d, i) => {
-      let cls = (d.includes("日") || d.includes("祝")) ? "sun" : d.includes("土") ? "sat" : "";
-      let countHtml = `<div class="count-box">`;
-      UI_CONFIG.signs.forEach(s => {
-        const label = UI_CONFIG.labels[s] || "";
-        countHtml += `<div class="count-row"><span>${s}${label}</span><span class="count-num">${totals[i][s]}</span></div>`;
-      });
-      countHtml += `</div>`;
-      html += `<th class="${cls}">${d}${countHtml}</th>`;
-    });
-    html += "</tr></thead><tbody>";
-
-    rawData.forEach((f, fIdx) => {
-      const isMe = (f.lineId === MY_LINE_ID);
-      html += `<tr class="${isMe ? 'my-row' : ''}"><td class="name-cell">${f.name}</td>`;
-      f.statuses.forEach((s, i) => {
-        const clickAttr = IS_VIEW_MODE ? "" : `onclick="toggle(${fIdx},${i})"`;
-        html += `<td class="status-cell status-${s}" ${clickAttr}>${s}</td>`;
-      });
-      html += "</tr>";
-    });
-    document.getElementById("mainTable").innerHTML = html + "</tbody>";
-  }
-
-  async function toggle(fIdx, dIdx) {
-    if (IS_VIEW_MODE) return;
-
-    const cycle = UI_CONFIG.signs;
-    let next = cycle[(cycle.indexOf(rawData[fIdx].statuses[dIdx]) + 1) % cycle.length];
-    
-    rawData[fIdx].statuses[dIdx] = next; 
-    render(); 
-    showToast("更新中...");
-    
-    // ★更新時にもキャッシュバスター(t=)を付与して確実に反映させる
-    const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=update&familyId=${rawData[fIdx].id}&dateLabel=${encodeURIComponent(days[dIdx])}&status=${encodeURIComponent(next)}&t=${new Date().getTime()}`);
-    const data = await res.json();
-    showToast(data.message);
-  }
-
-  function showToast(msg) {
-    const t = document.getElementById("toast");
-    t.innerText = msg; t.style.display = "block";
+    if (!t) return; t.innerText = msg; t.style.display = "block";
     setTimeout(() => t.style.display = "none", 1500);
   }
 
@@ -415,6 +202,3 @@ async function link() {
 </script>
 </body>
 </html>
-
-
-
