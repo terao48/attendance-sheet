@@ -69,7 +69,7 @@
     labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
   };
 
-  async function init() {
+async function init() {
     const params = new URLSearchParams(window.location.search);
     IS_VIEW_MODE = params.get('mode') === 'view';
     if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
@@ -77,8 +77,21 @@
     try {
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) { liff.login(); return; }
-      const profile = await liff.getProfile();
-      MY_LINE_ID = profile.userId;
+      
+      // ★ トークン有効期限切れ（expired）対策を追加
+      try {
+        const profile = await liff.getProfile();
+        MY_LINE_ID = profile.userId;
+      } catch (profileError) {
+        // エラーメッセージに expired や token が含まれている場合
+        if (profileError.message.includes("expired") || profileError.message.includes("token")) {
+          liff.logout(); // 古い情報を一旦リセット
+          liff.login();  // 新しくログインし直す
+          return;
+        } else {
+          throw profileError; // それ以外の予期せぬエラーは下の処理へ流す
+        }
+      }
 
       const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get&t=${new Date().getTime()}`, { cache: "no-cache" });
       const data = await res.json();
@@ -111,9 +124,9 @@
       document.getElementById("main-view").style.display = "flex";
       document.getElementById("weekTitle").innerHTML = `<span style="color:red; font-size:14px;">エラー: ${e.message}</span>`;
     }
-  }
-
-  async function link() {
+  } 
+  
+async function link() {
     const btn = document.querySelector('.btn-link');
     const select = document.getElementById("name-list");
     if (!select.value) return;
@@ -396,4 +409,5 @@
 </script>
 </body>
 </html>
+
 
