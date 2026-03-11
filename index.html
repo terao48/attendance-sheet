@@ -78,22 +78,28 @@ async function init() {
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) { liff.login(); return; }
       
-      // ★ トークン有効期限切れ（expired）対策を追加
       try {
         const profile = await liff.getProfile();
         MY_LINE_ID = profile.userId;
       } catch (profileError) {
-        // エラーメッセージに expired や token が含まれている場合
         if (profileError.message.includes("expired") || profileError.message.includes("token")) {
-          liff.logout(); // 古い情報を一旦リセット
-          liff.login();  // 新しくログインし直す
+          liff.logout();
+          liff.login();
           return;
-        } else {
-          throw profileError; // それ以外の予期せぬエラーは下の処理へ流す
-        }
+        } else { throw profileError; }
       }
 
-      const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get&t=${new Date().getTime()}`, { cache: "no-cache" });
+      // ★【最強化策】URLの末尾に、秒単位だけでなく「ミリ秒」単位の乱数を付与
+      // さらに headers にキャッシュ無効化命令を詰め込む
+      const antiCacheKey = Date.now().toString() + Math.random().toString(36).substring(7);
+      const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get&v=${antiCacheKey}`, {
+        method: 'GET',
+        cache: 'no-store', // キャッシュを一切保存させない
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       const data = await res.json();
 
       if (data.status === "success" && data.data) {
@@ -113,7 +119,7 @@ async function init() {
       } else if (data.status === "unregistered") {
         document.getElementById("registration-view").style.display = "block";
         const select = document.getElementById("name-list");
-        select.innerHTML = ""; // 初期化
+        select.innerHTML = "";
         data.list.forEach(item => {
           const opt = document.createElement("option");
           opt.value = item.id; opt.text = item.name;
@@ -124,8 +130,8 @@ async function init() {
       document.getElementById("main-view").style.display = "flex";
       document.getElementById("weekTitle").innerHTML = `<span style="color:red; font-size:14px;">エラー: ${e.message}</span>`;
     }
-  } 
-  
+  }  
+
 async function link() {
     const btn = document.querySelector('.btn-link');
     const select = document.getElementById("name-list");
@@ -409,5 +415,6 @@ async function link() {
 </script>
 </body>
 </html>
+
 
 
