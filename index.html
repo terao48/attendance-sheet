@@ -32,7 +32,8 @@
     .status-× { color: #7f8c8d; font-weight: bold; }
     .status-- { color: #ccc; }
     
-    #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
+    /* ガード用オーバーレイ */
+    #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
     .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top: 4px solid var(--main-green); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -43,10 +44,14 @@
   </style>
 </head>
 <body id="bodyTag">
-  <div id="loading"><div class="spinner"></div><p>読込中...</p></div>
+  <div id="loading">
+    <div class="spinner"></div>
+    <p id="loadingText">読込中...</p>
+  </div>
 
   <div id="registration-view">
     <h3>初回登録</h3>
+    <p>あなたのお名前を選択してください。</p>
     <select id="name-list"></select>
     <button class="btn-link" onclick="link()">登録する</button>
   </div>
@@ -58,6 +63,7 @@
   <div id="toast"></div>
 
 <script>
+  // ★実際のGASのURLとLIFF IDをセットしてください
   const GAS_URL = "https://script.google.com/macros/s/AKfycbwtyh1X3-Q1ER93O4tjoW5Xi7qtiQe6QlrXDRD8iZMK8VNL-vHnccel0QGnrM-xJ1RC/exec"; 
   const LIFF_ID = "2009266487-GEiMe9Ei";
 
@@ -79,8 +85,6 @@
 
     try {
       await liff.init({ liffId: LIFF_ID });
-      
-      // ★修正ポイント：閲覧モードならログインをスキップして即データ取得へ
       if (!IS_VIEW_MODE) {
         if (!liff.isLoggedIn()) {
           liff.login();
@@ -89,13 +93,9 @@
         const profile = await liff.getProfile();
         MY_LINE_ID = profile.userId;
       }
-
-      // データ取得（閲覧モードならMY_LINE_IDは空のまま飛ぶ）
       await fetchData();
-
     } catch (e) {
       console.error(e);
-      // トークンエラーが出ても閲覧モードなら無視して再試行
       if(IS_VIEW_MODE) await fetchData();
       else alert("Error: " + e.message);
     } finally {
@@ -109,17 +109,9 @@
 
     if (data.status === "success") {
       days = data.data.dates;
-      const families = data.data.families;
+      rawData = data.data.families;
       document.getElementById("main-view").style.display = "flex";
       document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
-
-      if (IS_VIEW_MODE) {
-        rawData = families;
-      } else {
-        const myData = families.find(f => f.lineId === MY_LINE_ID);
-        const otherData = families.filter(f => f.lineId !== MY_LINE_ID);
-        rawData = myData ? [myData, ...otherData] : families;
-      }
       render();
     } else if (data.status === "unregistered") {
       document.getElementById("registration-view").style.display = "block";
@@ -163,27 +155,49 @@
     document.getElementById("mainTable").innerHTML = html + "</tbody>";
   }
 
+  /**
+   * 出欠更新処理（ガード処理付き）
+   */
   async function toggle(fIdx, dIdx) {
-    const next = UI_CONFIG.signs[(UI_CONFIG.signs.indexOf(rawData[fIdx].statuses[dIdx]) + 1) % UI_CONFIG.signs.length];
+    const currentStatus = rawData[fIdx].statuses[dIdx];
+    const next = UI_CONFIG.signs[(UI_CONFIG.signs.indexOf(currentStatus) + 1) % UI_CONFIG.signs.length];
+    
+    // 表示上の更新（レスポンス重視）
     rawData[fIdx].statuses[dIdx] = next;
     render();
-    showToast("更新中...");
+
+    // ガード表示
+    const loader = document.getElementById("loading");
+    const loaderText = document.getElementById("loadingText");
+    loaderText.innerText = "保存中...";
+    loader.style.display = "flex";
+
     try {
-      await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=update&familyId=${rawData[fIdx].id}&dateLabel=${encodeURIComponent(days[dIdx])}&status=${encodeURIComponent(next)}&${getAntiCacheKey()}`);
-      showToast("更新完了");
-    } catch (e) { showToast("通信エラー"); }
+      const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=update&familyId=${rawData[fIdx].id}&dateLabel=${encodeURIComponent(days[dIdx])}&status=${encodeURIComponent(next)}&${getAntiCacheKey()}`);
+      const resData = await res.json();
+      
+      if (resData.status === "success") {
+        loaderText.innerText = "保存完了";
+        setTimeout(() => { loader.style.display = "none"; }, 500);
+      } else { throw new Error(); }
+    } catch (e) {
+      alert("通信エラー：保存に失敗しました。再試行してください。");
+      rawData[fIdx].statuses[dIdx] = currentStatus; // 戻す
+      render();
+      loader.style.display = "none";
+    }
   }
 
   async function link() {
     const sid = document.getElementById("name-list").value;
     document.getElementById("loading").style.display = "flex";
+    document.getElementById("loadingText").innerText = "登録中...";
     try {
       await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}&${getAntiCacheKey()}`);
       window.location.href = window.location.origin + window.location.pathname + "?t=" + new Date().getTime();
     } catch (e) { alert("Error"); document.getElementById("loading").style.display = "none"; }
   }
 
-  function showToast(m) { const t=document.getElementById("toast"); t.innerText=m; t.style.display="block"; setTimeout(()=>t.style.display="none",1000); }
   window.onload = init;
 </script>
 </body>
