@@ -12,7 +12,7 @@
     body { font-family: sans-serif; margin: 0; background: var(--bg-light); color: #333; overflow: hidden; }
     .container { padding: 4px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
     h3 { text-align: center; font-size: 18px; margin: 6px 0; }
-    .table-wrapper { flex: 1; overflow-y: auto; overflow-x: hidden; border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 60px; }
+    .table-wrapper { flex: 1; overflow-y: auto; overflow-x: hidden; border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     thead { position: sticky; top: 0; z-index: 10; }
     th { background: var(--main-green); color: white; padding: 4px 0; font-size: 12px; border: none; font-weight: bold; }
@@ -32,25 +32,26 @@
     .status-× { color: #7f8c8d; font-weight: bold; }
     .status-- { color: #ccc; }
     
-    /* 下部固定ボタンエリア */
-    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; background: white; border-top: 1px solid #ddd; display: none; box-sizing: border-box; }
-    .btn-save { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-    .btn-save:active { opacity: 0.7; }
-
-    #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
+    /* ガード用オーバーレイ */
+    #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
     .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top: 4px solid var(--main-green); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    #registration-view { display: none; padding: 20px; text-align: center; }
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; display: none; z-index: 1000; }
+    #registration-view { display: none; padding: 20px; text-align: center; background: white; border-radius: 8px; margin: 20px; }
     select { width: 100%; padding: 10px; margin: 15px 0; font-size: 16px; }
-    .btn-link { background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 5px; width: 100%; font-size: 16px; }
+    .btn-link { background: var(--main-green); color: white; border: none; padding: 12px 20px; border-radius: 5px; width: 100%; font-size: 16px; cursor: pointer; }
   </style>
 </head>
 <body id="bodyTag">
-  <div id="loading"><div class="spinner"></div><p id="loadingText">読込中...</p></div>
+  <div id="loading">
+    <div class="spinner"></div>
+    <p id="loadingText">読込中...</p>
+  </div>
 
   <div id="registration-view">
     <h3>初回登録</h3>
+    <p>あなたのお名前を選択してください。</p>
     <select id="name-list"></select>
     <button class="btn-link" onclick="link()">登録する</button>
   </div>
@@ -58,12 +59,11 @@
   <div class="container" id="main-view" style="display:none;">
     <h3 id="weekTitle"></h3>
     <div class="table-wrapper"><table id="mainTable"></table></div>
-    <div id="footer" class="footer-bar">
-      <button class="btn-save" onclick="saveAll()">変更を保存して閉じる</button>
-    </div>
   </div>
+  <div id="toast"></div>
 
 <script>
+  // ★実際のGASのURLとLIFF IDをセットしてください
   const GAS_URL = "https://script.google.com/macros/s/AKfycbwtyh1X3-Q1ER93O4tjoW5Xi7qtiQe6QlrXDRD8iZMK8VNL-vHnccel0QGnrM-xJ1RC/exec"; 
   const LIFF_ID = "https://liff.line.me/2009266487-GEiMe9Ei";
 
@@ -71,38 +71,47 @@
   let IS_VIEW_MODE = false;
   let days = [];
   let rawData = [];
-  let changed = false; // ★変更があったかどうかのフラグ
   const UI_CONFIG = {
     signs: ["〇", "△", "×", "-"],
     labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
   };
 
+  function getAntiCacheKey() { return `v=${Date.now()}`; }
+
   async function init() {
     const params = new URLSearchParams(window.location.search);
     IS_VIEW_MODE = params.get('mode') === 'view';
     if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
-    document.getElementById("loading").style.display = "flex";
 
     try {
       await liff.init({ liffId: LIFF_ID });
       if (!IS_VIEW_MODE) {
-        if (!liff.isLoggedIn()) { liff.login(); return; }
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
         const profile = await liff.getProfile();
         MY_LINE_ID = profile.userId;
       }
       await fetchData();
-    } catch (e) { console.error(e); } finally { document.getElementById("loading").style.display = "none"; }
+    } catch (e) {
+      console.error(e);
+      if(IS_VIEW_MODE) await fetchData();
+      else alert("Error: " + e.message);
+    } finally {
+      document.getElementById("loading").style.display = "none";
+    }
   }
 
   async function fetchData() {
-    const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE?'view':''}&v=${Date.now()}`);
+    const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE?'view':''}&${getAntiCacheKey()}`);
     const data = await res.json();
+
     if (data.status === "success") {
       days = data.data.dates;
       rawData = data.data.families;
       document.getElementById("main-view").style.display = "flex";
       document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
-      if(!IS_VIEW_MODE) document.getElementById("footer").style.display = "block";
       render();
     } else if (data.status === "unregistered") {
       document.getElementById("registration-view").style.display = "block";
@@ -125,11 +134,11 @@
     let html = `<thead><tr><th class="name-col-head">団員父兄</th>`;
     days.forEach((d, i) => {
       let cls = (d.includes("日") || d.includes("祝")) ? "sun" : d.includes("土") ? "sat" : "";
-      html += `<th class="${cls}">${d}<div class="count-box">`;
+      let countHtml = `<div class="count-box">`;
       UI_CONFIG.signs.forEach(s => {
-        html += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span class="count-num">${totals[i][s]}</span></div>`;
+        countHtml += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span class="count-num">${totals[i][s]}</span></div>`;
       });
-      html += `</div></th>`;
+      html += `<th class="${cls}">${d}${countHtml}</div></th>`;
     });
     html += "</tr></thead><tbody>";
 
@@ -146,43 +155,35 @@
     document.getElementById("mainTable").innerHTML = html + "</tbody>";
   }
 
-  // ★変更点：トグル時はメモリ上のデータを変えるだけ（高速）
-  function toggle(fIdx, dIdx) {
-    const signs = UI_CONFIG.signs;
-    const current = rawData[fIdx].statuses[dIdx];
-    rawData[fIdx].statuses[dIdx] = signs[(signs.indexOf(current) + 1) % signs.length];
-    changed = true;
+  /**
+   * 出欠更新処理（ガード処理付き）
+   */
+  async function toggle(fIdx, dIdx) {
+    const currentStatus = rawData[fIdx].statuses[dIdx];
+    const next = UI_CONFIG.signs[(UI_CONFIG.signs.indexOf(currentStatus) + 1) % UI_CONFIG.signs.length];
+    
+    // 表示上の更新（レスポンス重視）
+    rawData[fIdx].statuses[dIdx] = next;
     render();
-  }
 
-  // ★変更点：一括保存処理
-  async function saveAll() {
-    if (!changed) { liff.closeWindow(); return; }
-
+    // ガード表示
     const loader = document.getElementById("loading");
     const loaderText = document.getElementById("loadingText");
     loaderText.innerText = "保存中...";
     loader.style.display = "flex";
 
-    // 自分のデータだけを抽出して送信
-    const myData = rawData.find(f => f.lineId === MY_LINE_ID);
-    if (!myData) return;
-
-    const payload = myData.statuses.map((s, i) => ({
-      familyId: myData.id,
-      dateLabel: days[i],
-      status: s
-    }));
-
     try {
-      const res = await fetch(`${GAS_URL}?action=update_all&payload=${encodeURIComponent(JSON.stringify(payload))}`);
+      const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=update&familyId=${rawData[fIdx].id}&dateLabel=${encodeURIComponent(days[dIdx])}&status=${encodeURIComponent(next)}&${getAntiCacheKey()}`);
       const resData = await res.json();
+      
       if (resData.status === "success") {
-        loaderText.innerText = "保存完了！";
-        setTimeout(() => { liff.closeWindow(); }, 800);
-      }
+        loaderText.innerText = "保存完了";
+        setTimeout(() => { loader.style.display = "none"; }, 500);
+      } else { throw new Error(); }
     } catch (e) {
-      alert("通信エラーが発生しました。");
+      alert("通信エラー：保存に失敗しました。再試行してください。");
+      rawData[fIdx].statuses[dIdx] = currentStatus; // 戻す
+      render();
       loader.style.display = "none";
     }
   }
@@ -190,10 +191,11 @@
   async function link() {
     const sid = document.getElementById("name-list").value;
     document.getElementById("loading").style.display = "flex";
+    document.getElementById("loadingText").innerText = "登録中...";
     try {
-      await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}`);
-      window.location.reload();
-    } catch (e) { alert("Error"); }
+      await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}&${getAntiCacheKey()}`);
+      window.location.href = window.location.origin + window.location.pathname + "?t=" + new Date().getTime();
+    } catch (e) { alert("Error"); document.getElementById("loading").style.display = "none"; }
   }
 
   window.onload = init;
