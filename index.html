@@ -58,7 +58,7 @@
   <div id="toast"></div>
 
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwtyh1X3-Q1ER93O4tjoW5Xi7qtiQe6QlrXDRD8iZMK8VNL-vHnccel0QGnrM-xJ1RC/exec"; // ★必ず更新
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwtyh1X3-Q1ER93O4tjoW5Xi7qtiQe6QlrXDRD8iZMK8VNL-vHnccel0QGnrM-xJ1RC/exec"; 
   const LIFF_ID = "2009266487-GEiMe9Ei";
 
   let MY_LINE_ID = "";
@@ -70,7 +70,7 @@
     labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
   };
 
-  function getAntiCacheKey() { return `v=${new Date().getTime()}_${Math.random().toString(36).substring(2, 7)}`; }
+  function getAntiCacheKey() { return `v=${Date.now()}`; }
 
   async function init() {
     const params = new URLSearchParams(window.location.search);
@@ -79,41 +79,55 @@
 
     try {
       await liff.init({ liffId: LIFF_ID });
-      if (liff.isLoggedIn()) {
+      
+      // ★修正ポイント：閲覧モードならログインをスキップして即データ取得へ
+      if (!IS_VIEW_MODE) {
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
         const profile = await liff.getProfile();
         MY_LINE_ID = profile.userId;
-      } else if (!IS_VIEW_MODE) {
-        // 閲覧モード以外で未ログインならログイン
-        liff.login(); return;
       }
 
-      // MY_LINE_IDが空でもviewモードなら取得できるようにする
-      const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get&${getAntiCacheKey()}`, { cache: "no-cache" });
-      const data = await res.json();
+      // データ取得（閲覧モードならMY_LINE_IDは空のまま飛ぶ）
+      await fetchData();
 
-      if (data.status === "success") {
-        days = data.data.dates;
-        const families = data.data.families;
-        document.getElementById("main-view").style.display = "flex";
-        document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
+    } catch (e) {
+      console.error(e);
+      // トークンエラーが出ても閲覧モードなら無視して再試行
+      if(IS_VIEW_MODE) await fetchData();
+      else alert("Error: " + e.message);
+    } finally {
+      document.getElementById("loading").style.display = "none";
+    }
+  }
 
-        if (IS_VIEW_MODE) {
-          rawData = families; // 閲覧モードはそのまま表示
-        } else {
-          const myData = families.find(f => f.lineId === MY_LINE_ID);
-          const otherData = families.filter(f => f.lineId !== MY_LINE_ID);
-          rawData = myData ? [myData, ...otherData] : families;
-        }
-        render();
-      } else if (data.status === "unregistered") {
-        document.getElementById("registration-view").style.display = "block";
-        const select = document.getElementById("name-list");
-        data.list.forEach(item => {
-          let opt = document.createElement("option"); opt.value = item.id; opt.text = item.name; select.appendChild(opt);
-        });
+  async function fetchData() {
+    const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE?'view':''}&${getAntiCacheKey()}`);
+    const data = await res.json();
+
+    if (data.status === "success") {
+      days = data.data.dates;
+      const families = data.data.families;
+      document.getElementById("main-view").style.display = "flex";
+      document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
+
+      if (IS_VIEW_MODE) {
+        rawData = families;
+      } else {
+        const myData = families.find(f => f.lineId === MY_LINE_ID);
+        const otherData = families.filter(f => f.lineId !== MY_LINE_ID);
+        rawData = myData ? [myData, ...otherData] : families;
       }
-    } catch (e) { alert("Error: " + e.message); }
-    finally { document.getElementById("loading").style.display = "none"; }
+      render();
+    } else if (data.status === "unregistered") {
+      document.getElementById("registration-view").style.display = "block";
+      const select = document.getElementById("name-list");
+      data.list.forEach(item => {
+        let opt = document.createElement("option"); opt.value = item.id; opt.text = item.name; select.appendChild(opt);
+      });
+    }
   }
 
   function render() {
@@ -128,11 +142,11 @@
     let html = `<thead><tr><th class="name-col-head">団員父兄</th>`;
     days.forEach((d, i) => {
       let cls = (d.includes("日") || d.includes("祝")) ? "sun" : d.includes("土") ? "sat" : "";
-      html += `<th class="${cls}">${d}<div class="count-box">`;
+      let countHtml = `<div class="count-box">`;
       UI_CONFIG.signs.forEach(s => {
-        html += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span class="count-num">${totals[i][s]}</span></div>`;
+        countHtml += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span class="count-num">${totals[i][s]}</span></div>`;
       });
-      html += `</div></th>`;
+      html += `<th class="${cls}">${d}${countHtml}</div></th>`;
     });
     html += "</tr></thead><tbody>";
 
