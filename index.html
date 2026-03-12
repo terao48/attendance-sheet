@@ -12,16 +12,15 @@
     body { font-family: sans-serif; margin: 0; background: var(--bg-light); color: #333; overflow: hidden; }
     .container { padding: 4px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
     h3 { text-align: center; font-size: 18px; margin: 6px 0; }
-    .table-wrapper { flex: 1; overflow-y: auto; overflow-x: hidden; border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 60px; }
+    .table-wrapper { flex: 1; overflow-y: auto; overflow-x: hidden; border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 65px; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     thead { position: sticky; top: 0; z-index: 10; }
-    th { background: var(--main-green); color: white; padding: 4px 0; font-size: 12px; border: none; font-weight: bold; }
+    th { background: var(--main-green); color: white; padding: 4px 0; font-size: 11px; border: none; font-weight: bold; }
     .name-col-head { width: var(--name-col-width); }
     th.sat { background: var(--sat-blue); } 
     th.sun { background: var(--sun-red); } 
     .count-box { font-size: 10px; margin-top: 3px; padding: 2px 4px; background: rgba(0,0,0,0.15); font-weight: normal; line-height: 1.3; }
     .count-row { display: flex; justify-content: space-between; }
-    .count-num { font-weight: bold; font-family: monospace; }
     td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
     .name-cell { width: var(--name-col-width); padding: 0 2px; font-weight: bold; font-size: 12px; text-align: left; background: #fafafa; border-right: 2px solid var(--main-green); word-break: break-all; }
     .my-row { background-color: var(--my-row-bg) !important; }
@@ -33,24 +32,21 @@
     .status-- { color: #ccc; }
     
     .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; background: white; border-top: 1px solid #ddd; display: none; box-sizing: border-box; z-index: 100; }
-    .btn-save { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; }
+    .btn-save { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
 
-    /* 初期状態で表示。JSが成功したら隠す */
     #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
     .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top: 4px solid var(--main-green); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     #registration-view { display: none; padding: 20px; text-align: center; }
-    select { width: 100%; padding: 10px; margin: 15px 0; font-size: 16px; }
+    select { width: 100%; padding: 12px; margin: 15px 0; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
   </style>
 </head>
 <body id="bodyTag">
-  <div id="loading">
-    <div class="spinner"></div>
-    <p id="loadingText">読込中...</p>
-  </div>
+  <div id="loading"><div class="spinner"></div><p id="loadingText">読込中...</p></div>
 
   <div id="registration-view">
     <h3>初回登録</h3>
+    <p>あなたのお名前を選択してください。</p>
     <select id="name-list"></select>
     <button class="btn-save" style="background:#27ae60;" onclick="link()">登録する</button>
   </div>
@@ -64,9 +60,14 @@
   </div>
 
 <script>
-  // ★ ここを自分のものに書き換えてください ★
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwtyh1X3-Q1ER93O4tjoW5Xi7qtiQe6QlrXDRD8iZMK8VNL-vHnccel0QGnrM-xJ1RC/exec"; 
-  const LIFF_ID = "2009266487-GEiMe9Ei";
+  // ==========================================
+  // ★ ここだけを書き換えてください ★
+  // ==========================================
+  const SETTINGS = {
+    GAS_URL: "https://script.google.com/macros/s/AKfycbwtyh1X3-Q1ER93O4tjoW5Xi7qtiQe6QlrXDRD8iZMK8VNL-vHnccel0QGnrM-xJ1RC/exec", 
+    LIFF_ID: "2009266487-GEiMe9Ei"
+  };
+  // ==========================================
 
   let MY_LINE_ID = "";
   let IS_VIEW_MODE = false;
@@ -79,48 +80,31 @@
   };
 
   async function init() {
-    console.log("App Init Start");
     const params = new URLSearchParams(window.location.search);
     IS_VIEW_MODE = params.get('mode') === 'view';
     if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
 
     try {
-      // 1. LIFF初期化
-      if (!LIFF_ID || LIFF_ID === "YOUR_LIFF_ID_HERE") {
-        throw new Error("LIFF_IDが設定されていません。");
-      }
-      await liff.init({ liffId: LIFF_ID });
+      if (!SETTINGS.LIFF_ID || SETTINGS.LIFF_ID.includes("YOUR")) throw new Error("LIFF ID未設定");
+      await liff.init({ liffId: SETTINGS.LIFF_ID });
 
-      // 2. ログインチェック
       if (!IS_VIEW_MODE) {
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
+        if (!liff.isLoggedIn()) { liff.login(); return; }
         const profile = await liff.getProfile();
         MY_LINE_ID = profile.userId;
       }
-
-      // 3. データ取得
       await fetchData();
-
     } catch (e) {
       console.error(e);
-      alert("初期化エラー: " + e.message);
-      document.getElementById("loadingText").innerText = "エラーが発生しました。";
+      alert("エラー: " + e.message);
     } finally {
-      // 成功時のみフェードアウト
-      if (rawData.length > 0 || IS_VIEW_MODE) {
-         document.getElementById("loading").style.display = "none";
-      }
+      if (rawData.length > 0 || IS_VIEW_MODE) document.getElementById("loading").style.display = "none";
     }
   }
 
   async function fetchData() {
-    if (!GAS_URL || GAS_URL === "YOUR_GAS_URL_HERE") {
-      throw new Error("GAS_URLが設定されていません。");
-    }
-    const res = await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE?'view':''}&v=${Date.now()}`);
+    const url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE?'view':''}&v=${Date.now()}`;
+    const res = await fetch(url);
     const data = await res.json();
 
     if (data.status === "success") {
@@ -137,8 +121,6 @@
       data.list.forEach(item => {
         let opt = document.createElement("option"); opt.value = item.id; opt.text = item.name; select.appendChild(opt);
       });
-    } else {
-      throw new Error(data.message || "データ取得に失敗しました。");
     }
   }
 
@@ -156,7 +138,7 @@
       let cls = (d.includes("日") || d.includes("祝")) ? "sun" : d.includes("土") ? "sat" : "";
       html += `<th class="${cls}">${d}<div class="count-box">`;
       UI_CONFIG.signs.forEach(s => {
-        html += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span class="count-num">${totals[i][s]}</span></div>`;
+        html += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span>${totals[i][s]}</span></div>`;
       });
       html += `</div></th>`;
     });
@@ -185,7 +167,6 @@
 
   async function saveAll() {
     if (!changed) { liff.closeWindow(); return; }
-
     const loader = document.getElementById("loading");
     const loaderText = document.getElementById("loadingText");
     loader.style.display = "flex";
@@ -199,16 +180,14 @@
     }));
 
     try {
-      const res = await fetch(`${GAS_URL}?action=update_all&payload=${encodeURIComponent(JSON.stringify(payload))}`);
+      const res = await fetch(`${SETTINGS.GAS_URL}?action=update_all&payload=${encodeURIComponent(JSON.stringify(payload))}`);
       const resData = await res.json();
       if (resData.status === "success") {
-        loaderText.innerText = "保存完了！";
-        setTimeout(() => { liff.closeWindow(); }, 800);
-      } else {
-        throw new Error(resData.message);
+        loaderText.innerText = "完了！";
+        setTimeout(() => { liff.closeWindow(); }, 500);
       }
     } catch (e) {
-      alert("保存エラー: " + e.message);
+      alert("保存に失敗しました。再度お試しください。");
       loader.style.display = "none";
     }
   }
@@ -217,7 +196,7 @@
     const sid = document.getElementById("name-list").value;
     document.getElementById("loading").style.display = "flex";
     try {
-      await fetch(`${GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}`);
+      await fetch(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}`);
       window.location.reload();
     } catch (e) { alert("Error"); }
   }
@@ -226,4 +205,3 @@
 </script>
 </body>
 </html>
-
