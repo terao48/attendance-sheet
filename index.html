@@ -10,8 +10,12 @@
       --main-green: #27ae60; --sat-blue: #2980b9; --sun-red: #d35400;
       --bg-light: #f4f7f8; --my-row-bg: #fffbe6; --name-col-width: 70px;
     }
-    body { font-family: sans-serif; margin: 0; background: var(--bg-light); color: #333; overflow: hidden; }
-    .container { padding: 4px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+    html, body {
+      position: fixed; 
+      width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; 
+      font-family: sans-serif; margin: 0; background: var(--bg-light); color: #333; 
+    }
+    .container { padding: 4px; display: flex; flex-direction: column; height: 100vh; overflow: hidden; box-sizing: border-box; }
     h3 { text-align: center; font-size: 18px; margin: 6px 0; width: 100%; }
 
     .table-wrapper { flex: 1; overflow-y: auto; overflow-x: hidden; border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 65px; }
@@ -40,7 +44,6 @@
     .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top: 4px solid var(--main-green); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* --- 閲覧モード専用設定（文字サイズ維持・高さのみ短縮版） --- */
     .view-mode .table-wrapper { margin-bottom: 0; }
     .view-mode td { height: 34px; }
   </style>
@@ -65,7 +68,7 @@
 
 <script>
   const SETTINGS = {
-    // ★ GAS_URLをご自身のものに書き換えてください ★
+    // ★ デプロイした新しいGASのURLに書き換えてください ★
     GAS_URL: "https://script.google.com/macros/s/AKfycbwtyh1X3-Q1ER93O4tjoW5Xi7qtiQe6QlrXDRD8iZMK8VNL-vHnccel0QGnrM-xJ1RC/exec", 
     LIFF_ID: "2009266487-GEiMe9Ei"
   };
@@ -81,52 +84,31 @@
     labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
   };
 
-async function init() {
-    // 1. URLパラメータから閲覧モードかどうかを判定
+  document.addEventListener('touchmove', function(e) {
+    if (e.touches.length > 1) return; 
+    if (!e.target.closest('.table-wrapper')) { e.preventDefault(); }
+  }, { passive: false });
+
+  async function init() {
     const params = new URLSearchParams(window.location.search);
     IS_VIEW_MODE = (params.get('mode') === 'view'); 
-    
-    if (IS_VIEW_MODE) {
-      document.getElementById("bodyTag").classList.add("view-mode");
-    }
+    if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
 
     try {
-      // -------------------------------------------------------------
-      // 【技術解説（レベル3）】: 閲覧モード時のLIFF初期化スキップ
-      // 閲覧モードでは「誰が見ているか」を特定する必要がないため、
-      // liff.init() 自体を実行しないように分岐させます。
-      // これにより、LINEブラウザのプログレスバー（緑の線）が
-      // 読み込み中のままフリーズする現象を解消し、表示速度も上げます。
-      // -------------------------------------------------------------
       if (!IS_VIEW_MODE) {
-        // 編集モードの場合のみLIFFを初期化
         await liff.init({ liffId: SETTINGS.LIFF_ID });
-        
-        // 未ログインならログイン画面へリダイレクト
-        if (!liff.isLoggedIn()) { 
-          liff.login(); 
-          return; 
-        }
-        
-        // 自分のLINE IDを取得してグローバル変数に保持
+        if (!liff.isLoggedIn()) { liff.login(); return; }
         const profile = await liff.getProfile();
         MY_LINE_ID = profile.userId;
       }
-
-      // 2. 準備が整ったらGASからデータを取得（共通処理）
       await fetchData();
-
     } catch (e) {
       if (e.message && e.message.includes("failed")) {
         setTimeout(() => window.location.reload(), 1000); 
-      } else {
-        alert("初期化エラー: " + e.message);
-      }
+      } else { alert("初期化エラー: " + e.message); }
     } finally {
-      // 3. ローディング画面を非表示にする
-      if (rawData.length > 0 || IS_VIEW_MODE) {
-        document.getElementById("loading").style.display = "none";
-      }
+      if (rawData.length > 0 || IS_VIEW_MODE) document.getElementById("loading").style.display = "none";
+      window.dispatchEvent(new Event('load'));
     }
   }
 
@@ -180,7 +162,8 @@ async function init() {
     html += "</tr></thead><tbody>";
 
     rawData.forEach((f, fIdx) => {
-      const isMe = (MY_LINE_ID && f.lineId === MY_LINE_ID);
+      // ★修正：配列（lineIds）の中に自分のIDが含まれているか（includes）で「自分の行」かを判定
+      const isMe = (MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
       html += `<tr class="${isMe ? 'my-row' : ''}"><td class="name-cell">${f.name}</td>`;
       f.statuses.forEach((s, dIdx) => {
         const canEdit = !IS_VIEW_MODE && isMe;
@@ -204,7 +187,9 @@ async function init() {
     if (changedDayIndices.size === 0) { liff.closeWindow(); return; }
     const loader = document.getElementById("loading");
     loader.style.display = "flex";
-    const myData = rawData.find(f => f.lineId === MY_LINE_ID);
+    
+    // 保存時も配列内検索（includes）で自分のデータを特定
+    const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
     const payload = Array.from(changedDayIndices).map(dayIdx => ({
       familyId: myData.id,
       dateLabel: days[dayIdx],
