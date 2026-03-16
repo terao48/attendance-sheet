@@ -117,6 +117,14 @@
     try {
       const res = await fetch(url);
       const data = await res.json();
+      
+      // ★追加：GASからエラーが返ってきた場合の画面表示処理
+      if (data.status === "error") {
+        document.getElementById("loading").style.display = "none";
+        alert("【システムエラー】\n" + data.message);
+        return; // 処理をストップ
+      }
+
       if (data.status === "success") {
         days = data.data.dates;
         rawData = data.data.families;
@@ -137,10 +145,13 @@
         await new Promise(resolve => setTimeout(resolve, 500));
         return await fetchData(retryCount + 1);
       }
+      // ★通信エラーなどの根本的なエラー時の表示
+      document.getElementById("loading").style.display = "none";
+      alert("通信エラーが発生しました: " + e.message);
       throw e;
     }
   }
-
+  
   function render() {
     if (!days || days.length === 0) return;
     const totals = days.map(() => {
