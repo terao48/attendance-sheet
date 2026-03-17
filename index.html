@@ -1,226 +1,212 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <base target="_top">
   <meta charset="UTF-8">
-  <title>出欠入力システム</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>出欠管理システム</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    :root {
-      --main-green: #27ae60; --sat-blue: #2980b9; --sun-red: #d35400;
-      --bg-light: #f4f7f8; --my-row-bg: #fffbe6; --name-col-width: 70px;
-    }
-    html, body {
-      position: fixed; 
-      width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; 
-      font-family: sans-serif; margin: 0; background: var(--bg-light); color: #333; 
-    }
-    .container { padding: 4px; display: flex; flex-direction: column; height: 100vh; overflow: hidden; box-sizing: border-box; }
-    h3 { text-align: center; font-size: 18px; margin: 6px 0; width: 100%; }
+    :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; }
+    body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
+    .card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; }
+    .loading { display: flex; justify-content: center; align-items: center; height: 100vh; font-weight: bold; color: var(--primary); }
+    .week-label { font-size: 1.2rem; font-weight: bold; margin-bottom: 10px; color: var(--primary); }
+    
+    table { width: 100%; border-collapse: collapse; background: white; font-size: 14px; }
+    th, td { border: 1px solid #e2e8f0; padding: 10px 4px; text-align: center; }
+    th { background: #f1f5f9; position: sticky; top: 0; z-index: 10; }
+    .name-col { min-width: 80px; font-weight: bold; background: #fff; position: sticky; left: 0; z-index: 5; border-right: 2px solid #cbd5e1; }
 
-    .table-wrapper { flex: 1; overflow-y: auto; overflow-x: hidden; border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 65px; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    thead { position: sticky; top: 0; z-index: 10; }
-    th { background: var(--main-green); color: white; padding: 4px 0; font-size: 11px; border: none; font-weight: bold; }
-    .name-col-head { width: var(--name-col-width); }
-    th.sat { background: var(--sat-blue); } 
-    th.sun { background: var(--sun-red); } 
-    .count-box { font-size: 10px; margin-top: 3px; padding: 2px 4px; background: rgba(0,0,0,0.15); font-weight: normal; line-height: 1.3; }
-    .count-row { display: flex; justify-content: space-between; }
-    
-    td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
-    .name-cell { width: var(--name-col-width); padding: 0 2px; font-weight: bold; font-size: 12px; text-align: left; background: #fafafa; border-right: 2px solid var(--main-green); word-break: break-all; }
-    .my-row { background-color: var(--my-row-bg) !important; }
-    .status-cell { font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-    .status-〇 { color: var(--main-green); font-weight: bold; } 
-    .status-△ { color: #f39c12; font-weight: bold; }
-    .status-× { color: #7f8c8d; font-weight: bold; }
-    .status-- { color: #ccc; }
-    
-    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; background: white; border-top: 1px solid #ddd; display: none; box-sizing: border-box; z-index: 100; }
-    .btn-save { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-    
-    #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
-    .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top: 4px solid var(--main-green); border-radius: 50%; animation: spin 1s linear infinite; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    /* 出欠ボタンのデザイン */
+    .status-btn { width: 32px; height: 32px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 0 auto; transition: all 0.2s; }
+    .status-btn.active-ok { background: #dcfce7; border-color: #22c55e; color: #166534; }
+    .status-btn.active-late { background: #fef9c3; border-color: #eab308; color: #854d0e; }
+    .status-btn.active-ng { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+    .status-btn.active-none { background: #f8fafc; color: #94a3b8; }
 
-    .view-mode .table-wrapper { margin-bottom: 0; }
-    .view-mode td { height: 34px; }
+    /* 登録フォーム */
+    .reg-item { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+    .reg-btn { background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 6px; }
+    
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; display: none; z-index: 100; }
+    .saving-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.4); z-index: 99; display: none; }
   </style>
 </head>
-<body id="bodyTag">
-  <div id="loading"><div class="spinner"></div><p id="loadingText">読込中...</p></div>
-
-  <div id="registration-view" style="display:none; padding:20px; text-align:center;">
-    <h3>初回登録</h3>
-    <p>あなたのお名前を選択してください。</p>
-    <select id="name-list" style="width:100%; padding:12px; margin:15px 0; font-size:16px;"></select>
-    <button class="btn-save" onclick="link()">登録する</button>
-  </div>
-
-  <div class="container" id="main-view" style="display:none;">
-    <h3 id="weekTitle"></h3>
-    <div class="table-wrapper"><table id="mainTable"></table></div>
-    <div id="footer" class="footer-bar">
-      <button class="btn-save" onclick="saveAll()">変更を保存して閉じる</button>
+<body>
+  <div id="savingOverlay" class="saving-overlay"></div>
+  <div id="app">
+    <div id="loading" class="loading">読込中...</div>
+    <div id="content" style="display:none;">
+      <div id="weekLabel" class="week-label"></div>
+      <div id="tableContainer" style="overflow-x: auto;">
+        <table id="attendanceTable">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
+  <div id="toast"></div>
 
-<script>
-  const SETTINGS = {
-    // ★ デプロイした新しいGASのURLに書き換えてください ★
-    GAS_URL: "https://script.google.com/macros/s/AKfycbwtyh1X3-Q1ER93O4tjoW5Xi7qtiQe6QlrXDRD8iZMK8VNL-vHnccel0QGnrM-xJ1RC/exec", 
-    LIFF_ID: "2009266487-GEiMe9Ei"
-  };
+  <script>
+    const GAS_URL = "YOUR_GAS_WEB_APP_URL"; // ★必ず自分のURLに差し替えてください
+    const CONFIG = { NONE: "-", OK: "〇", LATE: "△", NG: "×" };
+    const NEXT_STATE = { "-": "〇", "〇": "△", "△": "×", "×": "-" };
+    
+    let state = { uid: "", mode: "edit", data: null, isSaving: false };
 
-  let MY_LINE_ID = "";
-  let IS_VIEW_MODE = false;
-  let days = [];      
-  let rawData = [];   
-  let changedDayIndices = new Set(); 
-
-  const UI_CONFIG = {
-    signs: ["〇", "△", "×", "-"],
-    labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
-  };
-
-  document.addEventListener('touchmove', function(e) {
-    if (e.touches.length > 1) return; 
-    if (!e.target.closest('.table-wrapper')) { e.preventDefault(); }
-  }, { passive: false });
-
-  async function init() {
-    const params = new URLSearchParams(window.location.search);
-    IS_VIEW_MODE = (params.get('mode') === 'view'); 
-    if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
-
-    try {
-      if (!IS_VIEW_MODE) {
-        await liff.init({ liffId: SETTINGS.LIFF_ID });
+    async function init() {
+      try {
+        await liff.init({ liffId: "YOUR_LIFF_ID" }); // ★自分のLIFF ID
         if (!liff.isLoggedIn()) { liff.login(); return; }
         const profile = await liff.getProfile();
-        MY_LINE_ID = profile.userId;
-      }
-      await fetchData();
-    } catch (e) {
-      if (e.message && e.message.includes("failed")) {
-        setTimeout(() => window.location.reload(), 1000); 
-      } else { alert("初期化エラー: " + e.message); }
-    } finally {
-      if (rawData.length > 0 || IS_VIEW_MODE) document.getElementById("loading").style.display = "none";
-      window.dispatchEvent(new Event('load'));
-    }
-  }
+        state.uid = profile.userId;
 
-  async function fetchData(retryCount = 0) {
-    const url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE?'view':''}&v=${Date.now()}`;
-    try {
-      const res = await fetch(url);
-      const data = await res.json();
+        const urlParams = new URLSearchParams(window.location.search);
+        state.mode = urlParams.get("mode") || "edit";
+
+        await loadData();
+      } catch (err) {
+        showToast("初期化失敗: " + err.message);
+      }
+    }
+
+    async function loadData() {
+      if (state.isSaving) return;
+      document.getElementById("loading").style.display = "flex";
+      try {
+        const res = await fetch(`${GAS_URL}?action=get&uid=${state.uid}&mode=${state.mode}`);
+        const result = await res.json();
+        
+        if (result.status === "error") throw new Error(result.message);
+        if (result.status === "unregistered") {
+          renderRegistration(result.list);
+          return;
+        }
+
+        state.data = result.data;
+        renderAttendance();
+      } catch (err) {
+        showToast("通信エラー: " + err.message);
+      } finally {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("content").style.display = "block";
+      }
+    }
+
+    function renderAttendance() {
+      if (state.data.noSchedule) {
+        document.getElementById("content").innerHTML = "<h3>現在、表示する予定はありません。</h3>";
+        return;
+      }
+      document.getElementById("weekLabel").innerText = state.data.weekLabel;
+
+      const head = document.getElementById("tableHead");
+      const body = document.getElementById("tableBody");
       
-      // ★追加：GASからエラーが返ってきた場合の画面表示処理
-      if (data.status === "error") {
-        document.getElementById("loading").style.display = "none";
-        alert("【システムエラー】\n" + data.message);
-        return; // 処理をストップ
-      }
+      let headHtml = `<tr><th class="name-col">名前</th>${state.data.dates.map(d => `<th>${d}</th>`).join("")}</tr>`;
+      head.innerHTML = headHtml;
 
-      if (data.status === "success") {
-        days = data.data.dates;
-        rawData = data.data.families;
-        document.getElementById("main-view").style.display = "flex";
-        document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
-        if(!IS_VIEW_MODE) document.getElementById("footer").style.display = "block";
-        render();
-      } else if (data.status === "unregistered") {
-        document.getElementById("loading").style.display = "none";
-        document.getElementById("registration-view").style.display = "block";
-        const select = document.getElementById("name-list");
-        data.list.forEach(item => {
-          let opt = document.createElement("option"); opt.value = item.id; opt.text = item.name; select.appendChild(opt);
-        });
-      }
-    } catch (e) {
-      if (retryCount < 2) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return await fetchData(retryCount + 1);
-      }
-      // ★通信エラーなどの根本的なエラー時の表示
-      document.getElementById("loading").style.display = "none";
-      alert("通信エラーが発生しました: " + e.message);
-      throw e;
+      let bodyHtml = state.data.families.map(f => {
+        const isMyFamily = f.lineIds.includes(state.uid);
+        return `<tr>
+          <td class="name-col">${f.name}${isMyFamily ? " ★" : ""}</td>
+          ${f.statuses.map((s, i) => {
+            const btnClass = getBtnClass(s);
+            const disabled = (state.mode === 'view' || !isMyFamily) ? 'disabled' : '';
+            return `<td>
+              <button class="status-btn ${btnClass}" ${disabled} onclick="toggleStatus('${f.id}', ${i})">${s}</button>
+            </td>`;
+          }).join("")}
+        </tr>`;
+      }).join("");
+      body.innerHTML = bodyHtml;
     }
-  }
-  
-  function render() {
-    if (!days || days.length === 0) return;
-    const totals = days.map(() => {
-      let obj = {}; UI_CONFIG.signs.forEach(s => obj[s] = 0); return obj;
-    });
-    rawData.forEach(f => {
-      f.statuses.forEach((s, i) => { if (totals[i].hasOwnProperty(s)) totals[i][s]++; });
-    });
 
-    let html = `<thead><tr><th class="name-col-head">団員父兄</th>`;
-    days.forEach((d, i) => {
-      let cls = (d.includes("日") || d.includes("祝")) ? "sun" : d.includes("土") ? "sat" : "";
-      html += `<th class="${cls}">${d}<div class="count-box">`;
-      UI_CONFIG.signs.forEach(s => {
-        html += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span>${totals[i][s]}</span></div>`;
+    function getBtnClass(s) {
+      if (s === "〇") return "active-ok";
+      if (s === "△") return "active-late";
+      if (s === "×") return "active-ng";
+      return "active-none";
+    }
+
+    // ★重要：ここを改良して「勝手に戻る」を防ぎます
+    async function toggleStatus(familyId, dateIdx) {
+      if (state.isSaving || state.mode === 'view') return;
+
+      // 1. 画面上の表示を先に変える（楽観的UI）
+      const family = state.data.families.find(f => f.id === familyId);
+      const currentStatus = family.statuses[dateIdx];
+      const nextStatus = NEXT_STATE[currentStatus];
+      family.statuses[dateIdx] = nextStatus;
+      renderAttendance();
+
+      // 2. 保存処理
+      state.isSaving = true;
+      document.getElementById("savingOverlay").style.display = "block";
+      
+      const payload = [{
+        familyId: familyId,
+        dateLabel: state.data.dates[dateIdx],
+        status: nextStatus
+      }];
+
+      try {
+        const res = await fetch(`${GAS_URL}?action=update_all&payload=${encodeURIComponent(JSON.stringify(payload))}`);
+        const result = await res.json();
+        if (result.status !== "success") throw new Error("保存失敗");
+        showToast("保存しました");
+      } catch (err) {
+        showToast("保存エラー: " + err.message);
+        // 失敗した場合は再読込して戻す
+        await loadData();
+      } finally {
+        state.isSaving = false;
+        document.getElementById("savingOverlay").style.display = "none";
+      }
+    }
+
+    function renderRegistration(list) {
+      const container = document.getElementById("content");
+      container.style.display = "block";
+      document.getElementById("loading").style.display = "none";
+      
+      let html = "<h3>家族を選択してください</h3><div class='card'>";
+      list.forEach(item => {
+        html += `<div class="reg-item">
+          <span>${item.name}</span>
+          <button class="reg-btn" onclick="register('${item.id}')">選択</button>
+        </div>`;
       });
-      html += `</div></th>`;
-    });
-    html += "</tr></thead><tbody>";
+      html += "</div>";
+      container.innerHTML = html;
+    }
 
-    rawData.forEach((f, fIdx) => {
-      // ★修正：配列（lineIds）の中に自分のIDが含まれているか（includes）で「自分の行」かを判定
-      const isMe = (MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
-      html += `<tr class="${isMe ? 'my-row' : ''}"><td class="name-cell">${f.name}</td>`;
-      f.statuses.forEach((s, dIdx) => {
-        const canEdit = !IS_VIEW_MODE && isMe;
-        const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
-        html += `<td class="status-cell status-${s}" ${clickAttr}>${s}</td>`;
-      });
-      html += "</tr>";
-    });
-    document.getElementById("mainTable").innerHTML = html + "</tbody>";
-  }
+    async function register(familyId) {
+      if (!confirm("この家族として登録しますか？")) return;
+      try {
+        const res = await fetch(`${GAS_URL}?action=link&family_id=${familyId}&uid=${state.uid}`);
+        const result = await res.json();
+        if (result.status === "success") {
+          showToast("登録完了");
+          loadData();
+        } else {
+          showToast(result.message);
+        }
+      } catch (err) {
+        showToast("登録エラー");
+      }
+    }
 
-  function toggle(fIdx, dIdx) {
-    const signs = UI_CONFIG.signs;
-    const current = rawData[fIdx].statuses[dIdx];
-    rawData[fIdx].statuses[dIdx] = signs[(signs.indexOf(current) + 1) % signs.length];
-    changedDayIndices.add(dIdx); 
-    render();
-  }
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.innerText = msg;
+      t.style.display = "block";
+      setTimeout(() => { t.style.display = "none"; }, 3000);
+    }
 
-  async function saveAll() {
-    if (changedDayIndices.size === 0) { liff.closeWindow(); return; }
-    const loader = document.getElementById("loading");
-    loader.style.display = "flex";
-    
-    // 保存時も配列内検索（includes）で自分のデータを特定
-    const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
-    const payload = Array.from(changedDayIndices).map(dayIdx => ({
-      familyId: myData.id,
-      dateLabel: days[dayIdx],
-      status: myData.statuses[dayIdx]
-    }));
-    try {
-      await fetch(`${SETTINGS.GAS_URL}?action=update_all&payload=${encodeURIComponent(JSON.stringify(payload))}`);
-      setTimeout(() => { liff.closeWindow(); }, 500);
-    } catch (e) { alert("保存エラー"); loader.style.display = "none"; }
-  }
-
-  async function link() {
-    const sid = document.getElementById("name-list").value;
-    document.getElementById("loading").style.display = "flex";
-    try {
-      await fetch(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}`);
-      window.location.reload(); 
-    } catch (e) { alert("登録エラー"); }
-  }
-  window.onload = init;
-</script>
+    window.onload = init;
+  </script>
 </body>
 </html>
