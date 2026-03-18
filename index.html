@@ -46,6 +46,8 @@
 
     .view-mode .table-wrapper { margin-bottom: 0; }
     .view-mode td { height: 34px; }
+    
+    .no-schedule-msg { padding: 40px 20px; text-align: center; font-weight: bold; color: #666; }
   </style>
 </head>
 <body id="bodyTag">
@@ -63,7 +65,9 @@
 
   <div class="container" id="main-view" style="display:none;">
     <h3 id="weekTitle"></h3>
-    <div class="table-wrapper"><table id="mainTable"></table></div>
+    <div class="table-wrapper" id="content-area">
+      <table id="mainTable"></table>
+    </div>
     <div id="footer" class="footer-bar">
       <button class="btn-save" onclick="saveAll()">変更を保存して閉じる</button>
     </div>
@@ -71,7 +75,7 @@
 
   <script>
     const SETTINGS = {
-      // ★必ず現在の最新のデプロイURLと一致しているか確認してください★
+      // ※GASのURLを貼り直してください
       GAS_URL: "https://script.google.com/macros/s/AKfycbwtyh1X3-Q1ER93O4tjoW5Xi7qtiQe6QlrXDRD8iZMK8VNL-vHnccel0QGnrM-xJ1RC/exec", 
       LIFF_ID: "2009266487-GEiMe9Ei"
     };
@@ -81,7 +85,7 @@
     let days = [];      
     let rawData = [];   
     let changedDayIndices = new Set(); 
-    let isSaving = false; // 保存処理の多重実行防止フラグ
+    let isSaving = false;
 
     const UI_CONFIG = {
       signs: ["〇", "△", "×", "-"],
@@ -96,21 +100,25 @@
 
     async function init() {
       const params = new URLSearchParams(window.location.search);
+      // mode=view があるか、あるいはログイン不要で開かれているかを判定
       IS_VIEW_MODE = (params.get('mode') === 'view'); 
       if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
 
       try {
+        // 【重要】閲覧モードでも LIFF の初期化は必ず実行する（LINEブラウザの読み込み完了を促すため）
+        await liff.init({ liffId: SETTINGS.LIFF_ID });
+        
         if (!IS_VIEW_MODE) {
-          await liff.init({ liffId: SETTINGS.LIFF_ID });
           if (!liff.isLoggedIn()) { liff.login(); return; }
           const profile = await liff.getProfile();
           MY_LINE_ID = profile.userId;
         }
+        
         await fetchData();
       } catch (e) {
         document.getElementById("loading").style.display = "none";
-        // ★自動リロードの無限ループを廃止し、明確なエラー通知に変更
-        alert("初期化または通信エラーが発生しました。\n\n詳細: " + e.message + "\n\n※GAS_URLが正しいか確認してください。");
+        console.error(e);
+        alert("初期化または通信エラーが発生しました。\n\n詳細: " + e.message);
       }
     }
 
@@ -118,19 +126,21 @@
       const url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : ''}&v=${Date.now()}`;
       try {
         const res = await fetch(url);
-        
-        // HTTPステータスが200以外（404等）ならエラーを投げる
-        if (!res.ok) {
-          throw new Error(`HTTP Error: ${res.status}`);
-        }
-
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
         const data = await res.json();
         
-        if (data.status === "error") {
-          throw new Error("GAS側エラー: " + data.message);
-        }
+        if (data.status === "error") throw new Error("GAS側エラー: " + data.message);
 
         if (data.status === "success") {
+          // スケジュール未設定時の対応
+          if (data.data.noSchedule) {
+            document.getElementById("loading").style.display = "none";
+            document.getElementById("main-view").style.display = "flex";
+            document.getElementById("weekTitle").innerText = "スケジュール未設定";
+            document.getElementById("content-area").innerHTML = '<div class="no-schedule-msg">現在、有効なスケジュールはありません。</div>';
+            return;
+          }
+
           days = data.data.dates;
           rawData = data.data.families;
           document.getElementById("main-view").style.display = "flex";
@@ -154,7 +164,6 @@
           await new Promise(resolve => setTimeout(resolve, 500));
           return await fetchData(retryCount + 1);
         }
-        // ここでエラーをキャッチしきれず上に投げる
         throw e;
       }
     }
@@ -229,7 +238,6 @@
         alert("保存エラーが発生しました。"); 
         loader.style.display = "none"; 
         isSaving = false;
-        document.getElementById("loadingText").innerText = "読込中..."; 
       }
     }
 
