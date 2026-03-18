@@ -91,7 +91,6 @@
       labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
     };
 
-    // スクロール制御
     document.addEventListener('touchmove', function(e) {
       if (e.touches.length > 1) return; 
       if (!e.target.closest('.table-wrapper')) { e.preventDefault(); }
@@ -103,9 +102,9 @@
       if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
 
       try {
-        await liff.init({ liffId: SETTINGS.LIFF_ID });
-        
+        // 【更新】閲覧モードのプログレスバー停止対策：閲覧時はLIFFを初期化せず無視する
         if (!IS_VIEW_MODE) {
+          await liff.init({ liffId: SETTINGS.LIFF_ID });
           if (!liff.isLoggedIn()) { liff.login(); return; }
           const profile = await liff.getProfile();
           MY_LINE_ID = profile.userId;
@@ -120,7 +119,10 @@
     }
 
     async function fetchData(retryCount = 0) {
-      const url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : ''}&v=${Date.now()}`;
+      // 【更新】表示中のHTMLのURL（GitHub等）を取得し、GASへ送信してE1に書き込む
+      const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
+      const url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : ''}&appUrl=${appUrl}&v=${Date.now()}`;
+      
       try {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
@@ -128,19 +130,16 @@
         
         if (data.status === "error") throw new Error("GAS側エラー: " + data.message);
 
-        // ★ タイトルの反映 (B1セルの値)
+        // 【更新】<title>タグ（タブやヘッダーのタイトル名）をB1セル値に置き換え
         if (data.data && data.data.title) {
           document.title = data.data.title;
-          document.getElementById("regTitle").innerText = data.data.title;
         }
 
         if (data.status === "success") {
-          const pageTitle = data.data.title || "";
-          
           if (data.data.noSchedule) {
             document.getElementById("loading").style.display = "none";
             document.getElementById("main-view").style.display = "flex";
-            document.getElementById("weekTitle").innerText = pageTitle + " (未設定)";
+            document.getElementById("weekTitle").innerText = "(未設定)";
             document.getElementById("content-area").innerHTML = '<div class="no-schedule-msg">現在、有効なスケジュールはありません。</div>';
             return;
           }
@@ -148,8 +147,9 @@
           days = data.data.dates;
           rawData = data.data.families;
           document.getElementById("main-view").style.display = "flex";
-          // ★ チーム名 ＋ ○/○週 ＋ (閲覧用) の形で表示
-          document.getElementById("weekTitle").innerText = pageTitle + " " + data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
+          
+          // 【更新】該当週表示は「従来通り」に修正（B1連結なし）
+          document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
           
           if (!IS_VIEW_MODE) document.getElementById("footer").style.display = "block";
           document.getElementById("loading").style.display = "none";
@@ -157,6 +157,7 @@
         } else if (data.status === "unregistered") {
           document.getElementById("loading").style.display = "none";
           document.getElementById("registration-view").style.display = "block";
+          document.getElementById("regTitle").innerText = data.data.title || "初回登録";
           const select = document.getElementById("name-list");
           data.list.forEach(item => {
             let opt = document.createElement("option"); 
