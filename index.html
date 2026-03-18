@@ -2,8 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>出欠入力システム</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>出欠入力システム</title> <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     :root {
@@ -57,7 +56,7 @@
   </div>
 
   <div id="registration-view" style="display:none; padding:20px; text-align:center;">
-    <h3>初回登録</h3>
+    <h3 id="regTitle">初回登録</h3>
     <p>あなたのお名前を選択してください。</p>
     <select id="name-list" style="width:100%; padding:12px; margin:15px 0; font-size:16px;"></select>
     <button class="btn-save" onclick="link()">登録する</button>
@@ -75,7 +74,7 @@
 
   <script>
     const SETTINGS = {
-      // ※GASのURLを貼り直してください
+      // ※現在ご使用のGAS_URLをここに設定してください
       GAS_URL: "https://script.google.com/macros/s/AKfycbwtyh1X3-Q1ER93O4tjoW5Xi7qtiQe6QlrXDRD8iZMK8VNL-vHnccel0QGnrM-xJ1RC/exec", 
       LIFF_ID: "2009266487-GEiMe9Ei"
     };
@@ -100,12 +99,10 @@
 
     async function init() {
       const params = new URLSearchParams(window.location.search);
-      // mode=view があるか、あるいはログイン不要で開かれているかを判定
       IS_VIEW_MODE = (params.get('mode') === 'view'); 
       if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
 
       try {
-        // 【重要】閲覧モードでも LIFF の初期化は必ず実行する（LINEブラウザの読み込み完了を促すため）
         await liff.init({ liffId: SETTINGS.LIFF_ID });
         
         if (!IS_VIEW_MODE) {
@@ -131,12 +128,19 @@
         
         if (data.status === "error") throw new Error("GAS側エラー: " + data.message);
 
+        // ★ タイトルの反映 (B1セルの値)
+        if (data.data && data.data.title) {
+          document.title = data.data.title;
+          document.getElementById("regTitle").innerText = data.data.title;
+        }
+
         if (data.status === "success") {
-          // スケジュール未設定時の対応
+          const pageTitle = data.data.title || "";
+          
           if (data.data.noSchedule) {
             document.getElementById("loading").style.display = "none";
             document.getElementById("main-view").style.display = "flex";
-            document.getElementById("weekTitle").innerText = "スケジュール未設定";
+            document.getElementById("weekTitle").innerText = pageTitle + " (未設定)";
             document.getElementById("content-area").innerHTML = '<div class="no-schedule-msg">現在、有効なスケジュールはありません。</div>';
             return;
           }
@@ -144,7 +148,9 @@
           days = data.data.dates;
           rawData = data.data.families;
           document.getElementById("main-view").style.display = "flex";
-          document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
+          // ★ チーム名 ＋ ○/○週 ＋ (閲覧用) の形で表示
+          document.getElementById("weekTitle").innerText = pageTitle + " " + data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
+          
           if (!IS_VIEW_MODE) document.getElementById("footer").style.display = "block";
           document.getElementById("loading").style.display = "none";
           render();
