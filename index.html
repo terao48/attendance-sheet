@@ -66,7 +66,7 @@
   </div>
 
   <script>
-    const GAS_URL = "★あなたのGASのウェブアプリURL★";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwtyh1X3-Q1ER93O4tjoW5Xi7qtiQe6QlrXDRD8iZMK8VNL-vHnccel0QGnrM-xJ1RC/exec";
     const CONFIG = { "-": { next: "〇", cls: "status-none" }, "〇": { next: "△", cls: "status-ok" }, "△": { next: "×", cls: "status-late" }, "×": { next: "-", cls: "status-ng" } };
     let currentData = null;
     let userId = "";
@@ -92,7 +92,7 @@
         isViewMode = urlParams.get('mode') === 'view';
         if (isViewMode) document.body.classList.add('view-mode');
 
-        await liff.init({ liffId: "★あなたのLIFF ID★" });
+        await liff.init({ liffId: "2009266487-GEiMe9Ei" });
         if (!liff.isLoggedIn()) { liff.login(); return; }
         userId = liff.getDecodedIDToken().sub;
 
