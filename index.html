@@ -7,25 +7,35 @@
   <style>
     :root { --main-green: #27ae60; --bg-light: #f4f7f8; --my-row-bg: #fffbe6; }
     html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; margin: 0; background: var(--bg-light); }
-    .container { padding: 4px; display: flex; flex-direction: column; height: 100dvh; box-sizing: border-box; }
-    .table-wrapper { flex: 1; overflow-y: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 140px; }
+    .container { padding: 0; display: flex; flex-direction: column; height: 100dvh; }
+    .table-wrapper { flex: 1; overflow-y: auto; background: white; margin-bottom: 0; }
+    /* 閲覧モード時はフッター分を詰め、通常時は入力欄用に140px確保 */
+    .has-footer { margin-bottom: 140px; }
+    
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     thead { position: sticky; top: 0; z-index: 10; }
-    th { background: var(--main-green); color: white; padding: 4px 0; font-size: 11px; }
-    td { border-bottom: 1px solid #eee; height: 55px; text-align: center; }
-    .name-cell { width: 70px; font-weight: bold; font-size: 12px; text-align: left; padding-left: 4px; border-right: 2px solid var(--main-green); }
-    .my-row { background-color: var(--my-row-bg) !important; }
-    .status-cell { font-size: 22px; cursor: pointer; position: relative; }
-    .locked { background-color: #f0f0f0 !important; color: #aaa !important; cursor: default; }
-    .comment-trigger { font-size: 14px; display: block; margin-top: -4px; color: #2980b9; }
+    th { background: var(--main-green); color: white; padding: 6px 0; font-size: 11px; border: none; }
+    td { border-bottom: 1px solid #eee; text-align: center; }
     
-    /* 下部コメント表示エリア（閲覧モード用） */
-    .comment-board { padding: 10px; background: #fff; border-top: 2px solid var(--main-green); font-size: 12px; }
-    .comment-item { margin-bottom: 8px; border-bottom: 1px dashed #ccc; padding-bottom: 4px; }
-    .comment-date-tag { font-weight: bold; color: var(--main-green); margin-right: 5px; }
+    /* セル設定 */
+    .name-cell { width: 70px; font-weight: bold; font-size: 12px; text-align: left; padding-left: 4px; border-right: 2px solid var(--main-green); }
+    .status-row { height: 40px; }
+    .comment-row { height: 25px; border-bottom: 2px solid #ddd; }
+    .comment-label { font-size: 10px; color: #7f8c8d; background: #f9f9f9; width: 70px; text-align: left; padding-left: 4px; border-right: 2px solid #ccc; }
+    
+    .status-cell { font-size: 20px; cursor: pointer; }
+    .locked { background-color: #f0f0f0 !important; color: #aaa !important; cursor: default; }
+    .comment-btn { font-size: 11px; color: #2980b9; text-decoration: underline; cursor: pointer; }
+    .my-row { background-color: var(--my-row-bg) !important; }
 
-    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 8px; background: white; border-top: 1px solid #ddd; z-index: 100; box-sizing: border-box; }
-    textarea { width: 100%; height: 60px; border: 1px solid #ccc; border-radius: 4px; padding: 6px; font-size: 13px; box-sizing: border-box; margin-bottom: 6px; }
+    /* 下部コメント掲示板 */
+    .comment-board { padding: 10px; background: #fff; border-top: 2px solid var(--main-green); font-size: 12px; }
+    .comment-item { margin-bottom: 6px; border-bottom: 1px dashed #eee; padding-bottom: 4px; word-break: break-all; }
+    .comment-date-tag { font-weight: bold; color: var(--main-green); }
+
+    /* 入力フッター（デフォルト非表示） */
+    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 8px; background: white; border-top: 1px solid #ddd; z-index: 100; box-sizing: border-box; display: none; }
+    textarea { width: 100%; height: 65px; border: 1px solid #ccc; border-radius: 4px; padding: 6px; font-size: 13px; box-sizing: border-box; margin-bottom: 6px; resize: none; }
     .btn-save { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; }
     #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
   </style>
@@ -40,21 +50,21 @@
   </div>
 
   <div class="container" id="main-view" style="display:none;">
-    <h3 id="weekTitle" style="text-align:center; margin:5px 0; font-size:14px;"></h3>
-    <div class="table-wrapper">
+    <h3 id="weekTitle" style="text-align:center; margin:4px 0; font-size:14px;"></h3>
+    <div id="wrapper" class="table-wrapper">
       <table id="mainTable"></table>
       <div id="commentBoard" class="comment-board"></div>
     </div>
     
     <div id="footer" class="footer-bar">
-      <textarea id="comment-box" placeholder="連絡事項を入力"></textarea>
-      <button id="save-btn" class="btn-save" onclick="saveAll()">保存して閉じる</button>
+      <textarea id="comment-box" placeholder="コメントを入力"></textarea>
+      <button id="save-btn" class="btn-save" onclick="saveAll()">変更を保存して閉じる</button>
     </div>
   </div>
 
   <script>
-    const SETTINGS = { GAS_URL: "https://script.google.com/macros/s/AKfycbyK70SuUPhT2tt5htRxPlCHAySTSzT7TfPFmRg8S4vuS6HP7eM03Uw_r3u8D_nQdjSb/exec", LIFF_ID: "2009266487-GEiMe9Ei" };
-    let MY_LINE_ID = "", IS_VIEW_MODE = false, MY_NAME = "";
+    const SETTINGS = { GAS_URL: "★GASのURL★", LIFF_ID: "★LIFFのID★" };
+    let MY_LINE_ID = "", IS_VIEW_MODE = false, MY_NAME = "", GLOBAL_ALL_COMMENTS = [];
     let days = [], rawData = [];
 
     async function init() {
@@ -76,15 +86,16 @@
       if (data.status === "success") {
         days = data.data.dates;
         rawData = data.data.families;
-        document.getElementById("weekTitle").innerText = data.data.weekLabel;
+        GLOBAL_ALL_COMMENTS = data.data.allComments; // グローバルに保存
+        document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧モード)":"");
         document.getElementById("comment-box").value = data.data.myComment || "";
         
         const myFamily = rawData.find(f => f.lineIds.includes(MY_LINE_ID));
         if (myFamily) MY_NAME = myFamily.name;
 
-        if (IS_VIEW_MODE) document.getElementById("footer").style.display = "none";
+        if (!IS_VIEW_MODE) document.getElementById("wrapper").classList.add("has-footer");
         
-        render(data.data.allComments);
+        render();
         document.getElementById("main-view").style.display = "flex";
         document.getElementById("loading").style.display = "none";
       } else {
@@ -95,30 +106,40 @@
       }
     }
 
-    function render(allComments) {
+    function render() {
       let html = `<thead><tr><th style="width:70px">氏名</th>`;
       days.forEach(d => html += `<th class="${d.isLocked?'locked':''}">${d.label}</th>`);
       html += "</tr></thead><tbody>";
 
       rawData.forEach((f, fIdx) => {
         const isMe = f.lineIds.includes(MY_LINE_ID);
-        html += `<tr class="${isMe?'my-row':''}">`;
-        html += `<td class="name-cell">${f.name}</td>`;
+        const rowCls = isMe ? 'my-row' : '';
+
+        // 1段目：出欠〇×行
+        html += `<tr class="status-row ${rowCls}"><td class="name-cell">${f.name}</td>`;
         f.statuses.forEach((s, dIdx) => {
           const locked = days[dIdx].isLocked;
           const click = (!IS_VIEW_MODE && !locked && isMe) ? `onclick="toggle(${fIdx},${dIdx})"` : "";
-          const commentBtn = (!IS_VIEW_MODE && isMe) ? `<span class="comment-trigger" onclick="prepComment('${days[dIdx].label}')">💬</span>` : "";
-          html += `<td class="status-cell ${locked?'locked':''}" ${click}>${s}${commentBtn}</td>`;
+          html += `<td class="status-cell ${locked?'locked':''}" ${click}>${s}</td>`;
+        });
+        html += "</tr>";
+
+        // 2段目：コメント行
+        html += `<tr class="comment-row ${rowCls}"><td class="comment-label">└ コメント</td>`;
+        days.forEach((d, dIdx) => {
+          const locked = days[dIdx].isLocked;
+          // 自分かつ閲覧モードでない場合のみ「コメント」リンクを表示
+          const btn = (!IS_VIEW_MODE && isMe) ? `<span class="comment-btn" onclick="showInput('${d.label}')">コメント</span>` : "";
+          html += `<td class="${locked?'locked':''}">${btn}</td>`;
         });
         html += "</tr>";
       });
       document.getElementById("mainTable").innerHTML = html + "</tbody>";
 
-      // コメント掲示板の描画
-      let cHtml = "<strong>【連絡事項】</strong><br>";
-      if (allComments.length === 0) cHtml += "なし";
-      allComments.forEach(c => {
-        // [3/24] のような形式を強調
+      // コメント掲示板
+      let cHtml = "<strong>【コメント一覧】</strong><br>";
+      if (GLOBAL_ALL_COMMENTS.length === 0) cHtml += "（なし）";
+      GLOBAL_ALL_COMMENTS.forEach(c => {
         const text = c.text.replace(/\[(.*?)\]/g, '<span class="comment-date-tag">[$1]</span>');
         cHtml += `<div class="comment-item"><strong>${c.name}</strong>: ${text}</div>`;
       });
@@ -128,10 +149,13 @@
     function toggle(fIdx, dIdx) {
       const signs = ["〇", "△", "×", "-"];
       rawData[fIdx].statuses[dIdx] = signs[(signs.indexOf(rawData[fIdx].statuses[dIdx]) + 1) % signs.length];
-      render([]); // 簡易再描画（コメントは維持）
+      render();
     }
 
-    function prepComment(dateLabel) {
+    // コメントリンクが押されたら入力欄を表示し、日付をセット
+    function showInput(dateLabel) {
+      const footer = document.getElementById("footer");
+      footer.style.display = "block";
       const box = document.getElementById("comment-box");
       const tag = `[${dateLabel}] ${MY_NAME}：`;
       if (!box.value.includes(tag)) {
