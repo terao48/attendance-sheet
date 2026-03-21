@@ -6,13 +6,12 @@
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     :root { --main-green: #27ae60; --bg-light: #f4f7f8; --my-row-bg: #fffbe6; }
-    html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; margin: 0; background: #fff; }
+    html, body { width: 100%; height: 100%; font-family: sans-serif; margin: 0; background: #fff; overflow-x: hidden; }
     .container { display: flex; flex-direction: column; height: 100dvh; }
     .table-wrapper { flex: 1; overflow-y: auto; }
-    .has-footer { margin-bottom: 140px; }
     
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    thead th { position: sticky; top: 0; z-index: 10; background: var(--main-green); color: white; padding: 8px 0; font-size: 11px; }
+    thead th { position: sticky; top: 0; z-index: 10; background: var(--main-green); color: white; padding: 10px 0; font-size: 11px; }
     td { border-bottom: 1px solid #eee; text-align: center; }
     
     .name-cell { width: 75px; font-weight: bold; font-size: 13px; text-align: left; padding-left: 6px; border-right: 2px solid var(--main-green); height: 45px; }
@@ -20,20 +19,23 @@
     .locked { background-color: #f5f5f5 !important; color: #bbb !important; cursor: default; }
     .my-row { background-color: var(--my-row-bg) !important; }
 
-    /* コメント入力行（編集モード・自分のみ） */
-    .comment-row { height: 30px; border-bottom: 2px solid #ddd; }
-    .comment-label { font-size: 11px; color: #e67e22; font-weight: bold; text-align: left; padding-left: 6px; border-right: 2px solid #ccc; background: #fdf2e9; }
-    .comment-link { font-size: 11px; color: #2980b9; text-decoration: underline; cursor: pointer; }
+    /* コメント行設定 */
+    .comment-row { height: 32px; border-bottom: 2px solid #ddd; }
+    .comment-label { font-size: 10px; color: #7f8c8d; text-align: left; padding-left: 6px; border-right: 2px solid #ccc; background: #fafafa; }
+    .icon-bubble { font-size: 16px; cursor: pointer; display: inline-block; vertical-align: middle; }
+    .icon-none { color: #ccc; font-size: 14px; }
 
-    /* 下部コメント一覧 */
-    .comment-board { padding: 10px; background: #fff; border-top: 1px solid #ddd; font-size: 13px; }
-    .comment-item { margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px dashed #eee; line-height: 1.4; }
-    .tag { font-weight: bold; color: var(--main-green); margin-right: 4px; }
+    /* ポップアップ(モーダル) */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; z-index: 1000; align-items: center; justify-content: center; }
+    .modal-content { background: white; width: 90%; max-width: 400px; border-radius: 12px; padding: 20px; box-sizing: border-box; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    .modal-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; text-align: center; color: var(--main-green); }
+    .comment-input-group { display: flex; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .date-tag { width: 70px; font-size: 12px; color: #666; font-weight: bold; }
+    .modal-textarea { flex: 1; height: 40px; border: 1px solid #ddd; border-radius: 4px; padding: 6px; font-size: 13px; resize: none; }
+    .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-save { flex: 1; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
+    .btn-cancel { flex: 1; background: #95a5a6; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
 
-    /* 入力フッター */
-    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; background: white; border-top: 1px solid #ccc; box-sizing: border-box; display: none; }
-    textarea { width: 100%; height: 70px; border: 1px solid #bbb; border-radius: 4px; padding: 8px; font-size: 14px; box-sizing: border-box; margin-bottom: 8px; resize: none; }
-    .btn-save { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; }
     #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:flex; align-items:center; justify-content:center; z-index:9999; }
   </style>
 </head>
@@ -47,21 +49,26 @@
   </div>
 
   <div class="container" id="main-view" style="display:none;">
-    <h4 id="weekTitle" style="text-align:center; margin:6px 0;"></h4>
+    <h4 id="weekTitle" style="text-align:center; margin:8px 0;"></h4>
     <div id="wrapper" class="table-wrapper">
       <table id="mainTable"></table>
-      <div id="commentBoard" class="comment-board"></div>
     </div>
-    
-    <div id="footer" class="footer-bar">
-      <textarea id="comment-box" placeholder="コメントを入力..."></textarea>
-      <button class="btn-save" onclick="saveAll()">保存して閉じる</button>
+  </div>
+
+  <div id="modal" class="modal-overlay">
+    <div class="modal-content">
+      <div id="modal-title" class="modal-title">コメント編集</div>
+      <div id="modal-body"></div>
+      <div class="btn-group">
+        <button id="modal-cancel-btn" class="btn-cancel" onclick="closeModal()">キャンセル</button>
+        <button id="modal-save-btn" class="btn-save" onclick="saveAll()">保存する</button>
+      </div>
     </div>
   </div>
 
   <script>
     const CONFIG = { GAS: "https://script.google.com/macros/s/AKfycbyK70SuUPhT2tt5htRxPlCHAySTSzT7TfPFmRg8S4vuS6HP7eM03Uw_r3u8D_nQdjSb/exec", LIFF: "2009266487-GEiMe9Ei" };
-    let MY_ID = "", IS_VIEW = false, MY_NAME = "", RAW_FAMILIES = [];
+    let MY_ID = "", IS_VIEW = false, DATES = [], FAMILIES = [];
 
     async function init() {
       const p = new URLSearchParams(location.search);
@@ -76,108 +83,123 @@
 
     async function fetchData() {
       const res = await fetch(`${CONFIG.GAS}?uid=${MY_ID}&action=get&mode=${IS_VIEW?'view':''}`);
-      const resJson = await res.json();
-      if (resJson.status === "success") {
-        const d = resJson.data;
-        RAW_FAMILIES = d.families;
-        const myFam = RAW_FAMILIES.find(f => f.lineIds.includes(MY_ID));
-        if (myFam) { MY_NAME = myFam.name; document.getElementById("comment-box").value = d.myComment || ""; }
-        
-        document.getElementById("weekTitle").innerText = d.weekLabel;
-        if (!IS_VIEW) document.getElementById("wrapper").classList.add("has-footer");
-        
-        render(d.dates, d.allComments);
+      const json = await res.json();
+      if (json.status === "success") {
+        DATES = json.data.dates;
+        FAMILIES = json.data.families;
+        document.getElementById("weekTitle").innerText = json.data.weekLabel;
+        render();
         document.getElementById("main-view").style.display = "flex";
         document.getElementById("loading").style.display = "none";
       } else {
         document.getElementById("loading").style.display = "none";
         document.getElementById("registration-view").style.display = "block";
         const sel = document.getElementById("name-list");
-        resJson.list.forEach(i => sel.add(new Option(i.name, i.id)));
+        json.list.forEach(i => sel.add(new Option(i.name, i.id)));
       }
     }
 
-    function render(dates, allComments) {
+    function render() {
       let html = `<thead><tr><th>氏名</th>`;
-      dates.forEach(d => html += `<th class="${d.isLocked?'locked':''}">${d.label}</th>`);
+      DATES.forEach(d => html += `<th class="${d.isLocked?'locked':''}">${d.label}</th>`);
       html += "</tr></thead><tbody>";
 
-      RAW_FAMILIES.forEach((f, fIdx) => {
+      FAMILIES.forEach((f, fIdx) => {
         const isMe = f.lineIds.includes(MY_ID);
         const rowCls = isMe ? 'my-row' : '';
+        
+        // 出欠行
         html += `<tr class="${rowCls}"><td class="name-cell">${f.name}</td>`;
         f.statuses.forEach((s, dIdx) => {
-          const locked = dates[dIdx].isLocked;
+          const locked = DATES[dIdx].isLocked;
           const click = (!IS_VIEW && !locked && isMe) ? `onclick="toggle(${fIdx},${dIdx})"` : "";
           html += `<td class="status-cell ${locked?'locked':''}" ${click}>${s}</td>`;
         });
         html += "</tr>";
 
-        // 編集モードかつ自分の行のみ「コメント」行を表示
-        if (!IS_VIEW && isMe) {
+        // コメント行の表示条件
+        // 編集モード(自分)の場合：常に表示
+        // 閲覧モードの場合：その家族の週内に1つでもコメントがあれば表示
+        const hasAnyComment = f.commentStatus.some(c => c !== "");
+        if ((!IS_VIEW && isMe) || (IS_VIEW && hasAnyComment)) {
           html += `<tr class="comment-row ${rowCls}"><td class="comment-label">└ コメント</td>`;
-          dates.forEach(d => {
-            html += `<td><span class="comment-link" onclick="openComment('${d.label}')">入力</span></td>`;
+          DATES.forEach((d, dIdx) => {
+            const commentText = f.commentStatus[dIdx];
+            const locked = DATES[dIdx].isLocked;
+            
+            let content = "";
+            if (!IS_VIEW && isMe) {
+              // 編集モード：吹き出しorハイフン、クリックでモーダル
+              content = commentText ? `<span class="icon-bubble" onclick="openCommentModal()">💬</span>` : `<span class="icon-none" onclick="openCommentModal()">-</span>`;
+            } else if (IS_VIEW && commentText) {
+              // 閲覧モード：吹き出しのみ、クリックで閲覧ポップアップ
+              content = `<span class="icon-bubble" onclick="viewComment('${f.name}','${d.label}','${commentText}')">💬</span>`;
+            } else {
+              content = `<span class="icon-none">-</span>`;
+            }
+            html += `<td class="${locked?'locked':''}">${content}</td>`;
           });
           html += "</tr>";
         }
       });
       document.getElementById("mainTable").innerHTML = html + "</tbody>";
-
-      // コメント掲示板（日付前の名前を削除）
-      let cHtml = "<strong>【コメント一覧】</strong><br>";
-      const validComments = allComments.map(c => c.text).filter(t => t.trim() !== "");
-      if (validComments.length === 0) cHtml += "（なし）";
-      validComments.forEach(text => {
-        // [日付] 部分を装飾し、各行を表示
-        const lines = text.split('\n');
-        lines.forEach(line => {
-          if(!line.trim()) return;
-          const formatted = line.replace(/\[(.*?)\]/g, '<span class="tag">[$1]</span>');
-          cHtml += `<div class="comment-item">${formatted}</div>`;
-        });
-      });
-      document.getElementById("commentBoard").innerHTML = cHtml;
     }
 
     function toggle(fIdx, dIdx) {
       const signs = ["〇", "△", "×", "-"];
-      RAW_FAMILIES[fIdx].statuses[dIdx] = signs[(signs.indexOf(RAW_FAMILIES[fIdx].statuses[dIdx]) + 1) % signs.length];
-      fetchData(); // 状態更新
+      const current = FAMILIES[fIdx].statuses[dIdx];
+      FAMILIES[fIdx].statuses[dIdx] = signs[(signs.indexOf(current) + 1) % signs.length];
+      render();
     }
 
-    function openComment(label) {
-      document.getElementById("footer").style.display = "block";
-      const box = document.getElementById("comment-box");
-      const tag = `[${label}]`;
-      // すでにその日付のタグがあればそこへ、なければ末尾に追加（上書きの準備）
-      if (!box.value.includes(tag)) {
-        box.value += (box.value ? "\n" : "") + tag + " " + MY_NAME + "：";
-      }
-      box.focus();
+    // 編集用モーダルを開く
+    function openCommentModal() {
+      const myFam = FAMILIES.find(f => f.lineIds.includes(MY_ID));
+      document.getElementById("modal-title").innerText = "コメント編集";
+      document.getElementById("modal-save-btn").style.display = "block";
+      
+      let html = "";
+      DATES.forEach((d, idx) => {
+        const val = myFam.commentStatus[idx] || "";
+        html += `<div class="comment-input-group">
+                  <div class="date-tag">${d.label}</div>
+                  <textarea id="edit-com-${idx}" class="modal-textarea" placeholder="記入なし">${val}</textarea>
+                </div>`;
+      });
+      document.getElementById("modal-body").innerHTML = html;
+      document.getElementById("modal").style.display = "flex";
+    }
+
+    // 閲覧用モーダルを開く
+    function viewComment(name, date, text) {
+      document.getElementById("modal-title").innerText = `${name} (${date})`;
+      document.getElementById("modal-body").innerHTML = `<div style="padding:10px; line-height:1.5; font-size:14px;">${text}</div>`;
+      document.getElementById("modal-save-btn").style.display = "none";
+      document.getElementById("modal").style.display = "flex";
+    }
+
+    function closeModal() {
+      document.getElementById("modal").style.display = "none";
     }
 
     async function saveAll() {
       document.getElementById("loading").style.display = "flex";
-      const myData = RAW_FAMILIES.find(f => f.lineIds.includes(MY_ID));
+      const myFam = FAMILIES.find(f => f.lineIds.includes(MY_ID));
       
-      // 日付毎に最新のみを残すクリーンアップ処理（上書きロジック）
-      const lines = document.getElementById("comment-box").value.split('\n');
-      const commentMap = new Map();
-      lines.forEach(line => {
-        const match = line.match(/^\[(.*?)\].*?：(.*)/);
-        if (match) commentMap.set(match[1], line); // 同じ日付タグがあれば上書き
-        else if(line.trim()) commentMap.set('other-' + Math.random(), line);
+      // 出欠ペイロード
+      const attPayload = DATES.map((d, i) => ({ dateLabel: d.label, status: myFam.statuses[i] }));
+      
+      // コメントペイロード（上書き用）
+      const comPayload = DATES.map((d, i) => {
+        const txt = document.getElementById(`edit-com-${i}`).value;
+        myFam.commentStatus[i] = txt; // ローカル反映
+        return { dateLabel: d.label, text: txt };
       });
-      const cleanComment = Array.from(commentMap.values()).join('\n');
 
-      const payload = RAW_FAMILIES[0].statuses.map((s, i) => ({ 
-        dateLabel: document.querySelectorAll("thead th")[i+1].innerText, 
-        status: s 
-      }));
+      const fullPayload = JSON.stringify({ att: attPayload, com: comPayload });
+      await fetch(`${CONFIG.GAS}?action=update_all&uid=${MY_ID}&familyId=${myFam.id}&payload=${encodeURIComponent(fullPayload)}`);
       
-      const url = `${CONFIG.GAS}?action=update_all&uid=${MY_ID}&familyId=${myData.id}&payload=${encodeURIComponent(JSON.stringify(payload))}&comment=${encodeURIComponent(cleanComment)}`;
-      await fetch(url);
+      closeModal();
       liff.closeWindow();
     }
 
