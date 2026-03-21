@@ -5,37 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    :root { --main-green: #27ae60; --bg-light: #f4f7f8; --my-row-bg: #fffbe6; }
-    html, body { width: 100%; height: 100%; font-family: sans-serif; margin: 0; background: #fff; overflow-x: hidden; }
+    :root { 
+      --main-green: #27ae60; 
+      --bg-light: #f4f7f8; 
+      --my-row-bg: #fffbe6; 
+      --text-main: #333;
+    }
+    html, body { width: 100%; height: 100%; font-family: sans-serif; margin: 0; background: #fff; color: var(--text-main); }
     .container { display: flex; flex-direction: column; height: 100dvh; }
-    .table-wrapper { flex: 1; overflow-y: auto; }
+    .table-wrapper { flex: 1; overflow-y: auto; margin-bottom: 70px; }
     
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     thead th { position: sticky; top: 0; z-index: 10; background: var(--main-green); color: white; padding: 10px 0; font-size: 11px; }
     td { border-bottom: 1px solid #eee; text-align: center; }
     
     .name-cell { width: 75px; font-weight: bold; font-size: 13px; text-align: left; padding-left: 6px; border-right: 2px solid var(--main-green); height: 45px; }
-    .status-cell { font-size: 22px; cursor: pointer; }
+    .status-cell { font-size: 22px; cursor: pointer; user-select: none; }
     .locked { background-color: #f5f5f5 !important; color: #bbb !important; cursor: default; }
     .my-row { background-color: var(--my-row-bg) !important; }
 
-    /* コメント行設定 */
+    /* コメント行のUI */
     .comment-row { height: 32px; border-bottom: 2px solid #ddd; }
     .comment-label { font-size: 10px; color: #7f8c8d; text-align: left; padding-left: 6px; border-right: 2px solid #ccc; background: #fafafa; }
     .icon-bubble { font-size: 16px; cursor: pointer; display: inline-block; vertical-align: middle; }
-    .icon-none { color: #ccc; font-size: 14px; }
+    .icon-none { color: #ccc; font-size: 14px; cursor: pointer; display: inline-block; vertical-align: middle; }
 
-    /* ポップアップ(モーダル) */
+    /* モーダル (ポップアップ) */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; z-index: 1000; align-items: center; justify-content: center; }
-    .modal-content { background: white; width: 90%; max-width: 400px; border-radius: 12px; padding: 20px; box-sizing: border-box; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-    .modal-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; text-align: center; color: var(--main-green); }
-    .comment-input-group { display: flex; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .modal-content { background: white; width: 90%; max-width: 400px; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    .modal-title { font-size: 15px; font-weight: bold; margin-bottom: 15px; text-align: center; color: var(--main-green); }
+    .input-group { display: flex; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
     .date-tag { width: 70px; font-size: 12px; color: #666; font-weight: bold; }
-    .modal-textarea { flex: 1; height: 40px; border: 1px solid #ddd; border-radius: 4px; padding: 6px; font-size: 13px; resize: none; }
-    .btn-group { display: flex; gap: 10px; margin-top: 20px; }
-    .btn-save { flex: 1; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
-    .btn-cancel { flex: 1; background: #95a5a6; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; }
-
+    .modal-textarea { flex: 1; height: 38px; border: 1px solid #ddd; border-radius: 4px; padding: 6px; font-size: 13px; resize: none; box-sizing: border-box; }
+    
+    /* 下部フッター */
+    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; background: white; border-top: 1px solid #ccc; box-sizing: border-box; }
+    .btn-main { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    .btn-sub { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; }
+    
     #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:flex; align-items:center; justify-content:center; z-index:9999; }
   </style>
 </head>
@@ -44,38 +51,50 @@
 
   <div id="registration-view" style="display:none; padding:20px; text-align:center;">
     <h3>初回登録</h3>
-    <select id="name-list" style="width:100%; padding:12px; margin:15px 0;"></select>
-    <button class="btn-save" onclick="link()">登録する</button>
+    <select id="name-list" style="width:100%; padding:12px; margin:15px 0; border-radius:4px;"></select>
+    <button class="btn-main" onclick="link()">登録する</button>
   </div>
 
   <div class="container" id="main-view" style="display:none;">
-    <h4 id="weekTitle" style="text-align:center; margin:8px 0;"></h4>
-    <div id="wrapper" class="table-wrapper">
-      <table id="mainTable"></table>
+    <h4 id="weekTitle" style="text-align:center; margin:10px 0;"></h4>
+    <div id="wrapper" class="table-wrapper"><table id="mainTable"></table></div>
+    <div class="footer-bar" id="main-footer">
+        <button class="btn-main" onclick="saveToServer()">保存して閉じる</button>
     </div>
   </div>
 
   <div id="modal" class="modal-overlay">
     <div class="modal-content">
-      <div id="modal-title" class="modal-title">コメント編集</div>
+      <div id="modal-title" class="modal-title">コメント</div>
       <div id="modal-body"></div>
-      <div class="btn-group">
-        <button id="modal-cancel-btn" class="btn-cancel" onclick="closeModal()">キャンセル</button>
-        <button id="modal-save-btn" class="btn-save" onclick="saveAll()">保存する</button>
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        <button id="cancel-btn" class="btn-sub" style="background:#95a5a6; color:white;" onclick="closeModal()">キャンセル</button>
+        <button id="apply-btn" class="btn-sub" style="background:var(--main-green); color:white;" onclick="applyComments()">OK(戻る)</button>
       </div>
     </div>
   </div>
 
-  
   <script>
-    const CONFIG = { GAS: "https://script.google.com/macros/s/AKfycbyK70SuUPhT2tt5htRxPlCHAySTSzT7TfPFmRg8S4vuS6HP7eM03Uw_r3u8D_nQdjSb/exec", LIFF: "2009266487-GEiMe9Ei" };
+    /**
+     * ==========================================
+     * 【最上部：定数設定】
+     * アプリ内で共通して使う設定やトグル順を定義します
+     * ==========================================
+     */
+    const APP_CONFIG = {
+      GAS_URL: "https://script.google.com/macros/s/AKfycbyK70SuUPhT2tt5htRxPlCHAySTSzT7TfPFmRg8S4vuS6HP7eM03Uw_r3u8D_nQdjSb/exec",
+      LIFF_ID: "2009266487-GEiMe9Ei",
+      STATUS_SIGNS: ["〇", "△", "×", "-"]  // 出欠タップ時の切り替え順序
+    };
+
     let MY_ID = "", IS_VIEW = false, DATES = [], FAMILIES = [];
 
     async function init() {
       const p = new URLSearchParams(location.search);
       IS_VIEW = (p.get('mode') === 'view');
+      
       if (!IS_VIEW) {
-        await liff.init({ liffId: CONFIG.LIFF });
+        await liff.init({ liffId: APP_CONFIG.LIFF_ID });
         if (!liff.isLoggedIn()) { liff.login(); return; }
         MY_ID = (await liff.getProfile()).userId;
       }
@@ -83,16 +102,26 @@
     }
 
     async function fetchData() {
-      const res = await fetch(`${CONFIG.GAS}?uid=${MY_ID}&action=get&mode=${IS_VIEW?'view':''}`);
+      const res = await fetch(`${APP_CONFIG.GAS_URL}?uid=${MY_ID}&action=get&mode=${IS_VIEW?'view':''}`);
       const json = await res.json();
+      
       if (json.status === "success") {
         DATES = json.data.dates;
         FAMILIES = json.data.families;
-        document.getElementById("weekTitle").innerText = json.data.weekLabel;
+        
+        document.getElementById("weekTitle").innerText = json.data.weekLabel + (IS_VIEW ? " (閲覧モード)" : "");
+        
+        // 閲覧モード時は保存ボタン（フッター）と余白を非表示にする
+        if (IS_VIEW) {
+          document.getElementById("main-footer").style.display = "none";
+          document.getElementById("wrapper").style.marginBottom = "0";
+        }
+        
         render();
         document.getElementById("main-view").style.display = "flex";
         document.getElementById("loading").style.display = "none";
       } else {
+        // 未登録の場合の処理
         document.getElementById("loading").style.display = "none";
         document.getElementById("registration-view").style.display = "block";
         const sel = document.getElementById("name-list");
@@ -100,9 +129,12 @@
       }
     }
 
+    /**
+     * テーブルの描画
+     */
     function render() {
       let html = `<thead><tr><th>氏名</th>`;
-      DATES.forEach(d => html += `<th class="${d.isLocked?'locked':''}">${d.label}</th>`);
+      DATES.forEach(d => html += `<th class="${d.isLocked ? 'locked' : ''}">${d.label}</th>`);
       html += "</tr></thead><tbody>";
 
       FAMILIES.forEach((f, fIdx) => {
@@ -114,31 +146,32 @@
         f.statuses.forEach((s, dIdx) => {
           const locked = DATES[dIdx].isLocked;
           const click = (!IS_VIEW && !locked && isMe) ? `onclick="toggle(${fIdx},${dIdx})"` : "";
-          html += `<td class="status-cell ${locked?'locked':''}" ${click}>${s}</td>`;
+          html += `<td class="status-cell ${locked ? 'locked' : ''}" ${click}>${s}</td>`;
         });
         html += "</tr>";
 
-        // コメント行の表示条件
-        // 編集モード(自分)の場合：常に表示
-        // 閲覧モードの場合：その家族の週内に1つでもコメントがあれば表示
-        const hasAnyComment = f.commentStatus.some(c => c !== "");
+        // コメント行の表示判定
+        // 「自分が編集モード」または「閲覧モードで、この家族に1つ以上コメントがある場合」のみ行を描画
+        const hasAnyComment = f.commentStatus.some(c => c.trim() !== "");
         if ((!IS_VIEW && isMe) || (IS_VIEW && hasAnyComment)) {
           html += `<tr class="comment-row ${rowCls}"><td class="comment-label">└ コメント</td>`;
+          
           DATES.forEach((d, dIdx) => {
             const commentText = f.commentStatus[dIdx];
             const locked = DATES[dIdx].isLocked;
-            
             let content = "";
+            
             if (!IS_VIEW && isMe) {
-              // 編集モード：吹き出しorハイフン、クリックでモーダル
-              content = commentText ? `<span class="icon-bubble" onclick="openCommentModal()">💬</span>` : `<span class="icon-none" onclick="openCommentModal()">-</span>`;
+              // 編集モード：自分がタップして入力モーダルを開く
+              content = commentText ? `<span class="icon-bubble" onclick="openEditModal()">💬</span>` : `<span class="icon-none" onclick="openEditModal()">-</span>`;
             } else if (IS_VIEW && commentText) {
-              // 閲覧モード：吹き出しのみ、クリックで閲覧ポップアップ
-              content = `<span class="icon-bubble" onclick="viewComment('${f.name}','${d.label}','${commentText}')">💬</span>`;
+              // 閲覧モード：コメントがある日付のみアイコンを表示、タップで閲覧モーダル
+              content = `<span class="icon-bubble" onclick="openViewModal('${f.name}','${d.label}','${commentText}')">💬</span>`;
             } else {
+              // コメントなしの場合はハイフン
               content = `<span class="icon-none">-</span>`;
             }
-            html += `<td class="${locked?'locked':''}">${content}</td>`;
+            html += `<td class="${locked ? 'locked' : ''}">${content}</td>`;
           });
           html += "</tr>";
         }
@@ -146,69 +179,91 @@
       document.getElementById("mainTable").innerHTML = html + "</tbody>";
     }
 
+    /**
+     * 出欠ステータスのトグル
+     */
     function toggle(fIdx, dIdx) {
-      const signs = ["〇", "△", "×", "-"];
+      const signs = APP_CONFIG.STATUS_SIGNS;
       const current = FAMILIES[fIdx].statuses[dIdx];
       FAMILIES[fIdx].statuses[dIdx] = signs[(signs.indexOf(current) + 1) % signs.length];
       render();
     }
 
-    // 編集用モーダルを開く
-    function openCommentModal() {
+    /**
+     * 入力用モーダルを開く
+     */
+    function openEditModal() {
       const myFam = FAMILIES.find(f => f.lineIds.includes(MY_ID));
       document.getElementById("modal-title").innerText = "コメント編集";
-      document.getElementById("modal-save-btn").style.display = "block";
+      document.getElementById("apply-btn").style.display = "block";
+      document.getElementById("cancel-btn").innerText = "キャンセル";
       
       let html = "";
       DATES.forEach((d, idx) => {
-        const val = myFam.commentStatus[idx] || "";
-        html += `<div class="comment-input-group">
+        html += `<div class="input-group">
                   <div class="date-tag">${d.label}</div>
-                  <textarea id="edit-com-${idx}" class="modal-textarea" placeholder="記入なし">${val}</textarea>
+                  <textarea id="edit-com-${idx}" class="modal-textarea" placeholder="記入なし">${myFam.commentStatus[idx] || ""}</textarea>
                 </div>`;
       });
       document.getElementById("modal-body").innerHTML = html;
       document.getElementById("modal").style.display = "flex";
     }
 
-    // 閲覧用モーダルを開く
-    function viewComment(name, date, text) {
+    /**
+     * ポップアップの入力をメモリ上に一時反映する（まだ保存しない）
+     */
+    function applyComments() {
+      const myFam = FAMILIES.find(f => f.lineIds.includes(MY_ID));
+      DATES.forEach((d, i) => {
+        myFam.commentStatus[i] = document.getElementById(`edit-com-${i}`).value;
+      });
+      closeModal();
+      render(); // メイン画面のアイコン（吹き出しやハイフン）を更新
+    }
+
+    /**
+     * 閲覧用モーダルを開く
+     */
+    function openViewModal(name, date, text) {
       document.getElementById("modal-title").innerText = `${name} (${date})`;
-      document.getElementById("modal-body").innerHTML = `<div style="padding:10px; line-height:1.5; font-size:14px;">${text}</div>`;
-      document.getElementById("modal-save-btn").style.display = "none";
+      // テキスト内の改行を <br> に変換して表示
+      const formattedText = text.replace(/\n/g, "<br>");
+      document.getElementById("modal-body").innerHTML = `<div style="padding:10px; font-size:14px; line-height:1.5; background:#fafafa; border-radius:6px;">${formattedText}</div>`;
+      
+      document.getElementById("apply-btn").style.display = "none";
+      document.getElementById("cancel-btn").innerText = "閉じる";
       document.getElementById("modal").style.display = "flex";
     }
 
-    function closeModal() {
-      document.getElementById("modal").style.display = "none";
+    function closeModal() { 
+      document.getElementById("modal").style.display = "none"; 
     }
 
-    async function saveAll() {
+    /**
+     * サーバー(GAS)に最終保存する
+     */
+    async function saveToServer() {
       document.getElementById("loading").style.display = "flex";
       const myFam = FAMILIES.find(f => f.lineIds.includes(MY_ID));
       
-      // 出欠ペイロード
-      const attPayload = DATES.map((d, i) => ({ dateLabel: d.label, status: myFam.statuses[i] }));
+      const payload = {
+        att: DATES.map((d, i) => ({ dateLabel: d.label, status: myFam.statuses[i] })),
+        com: DATES.map((d, i) => ({ dateLabel: d.label, text: myFam.commentStatus[i] }))
+      };
       
-      // コメントペイロード（上書き用）
-      const comPayload = DATES.map((d, i) => {
-        const txt = document.getElementById(`edit-com-${i}`).value;
-        myFam.commentStatus[i] = txt; // ローカル反映
-        return { dateLabel: d.label, text: txt };
-      });
-
-      const fullPayload = JSON.stringify({ att: attPayload, com: comPayload });
-      await fetch(`${CONFIG.GAS}?action=update_all&uid=${MY_ID}&familyId=${myFam.id}&payload=${encodeURIComponent(fullPayload)}`);
-      
-      closeModal();
+      await fetch(`${APP_CONFIG.GAS_URL}?action=update_all&uid=${MY_ID}&familyId=${myFam.id}&payload=${encodeURIComponent(JSON.stringify(payload))}`);
       liff.closeWindow();
     }
 
+    /**
+     * 初回LINE連携
+     */
     async function link() {
       const id = document.getElementById("name-list").value;
-      await fetch(`${CONFIG.GAS}?uid=${MY_ID}&action=link&family_id=${id}`);
+      await fetch(`${APP_CONFIG.GAS_URL}?uid=${MY_ID}&action=link&family_id=${id}`);
       location.reload();
     }
+    
     window.onload = init;
   </script>
 </body>
