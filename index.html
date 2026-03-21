@@ -5,78 +5,72 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    :root { --main-green: #27ae60; --bg-light: #f4f7f8; --my-row-bg: #fffbe6; }
-    html, body { width: 100%; height: 100%; font-family: sans-serif; margin: 0; background: #fff; }
-    .container { display: flex; flex-direction: column; height: 100dvh; }
-    .table-wrapper { flex: 1; overflow-y: auto; margin-bottom: 70px; }
-    
+    :root { --main: #27ae60; --bg: #f4f7f8; --my-bg: #fffbe6; }
+    body { margin: 0; font-family: -apple-system, sans-serif; background: #fff; color: #333; height: 100dvh; display: flex; flex-direction: column; }
+    .table-wrapper { flex: 1; overflow-y: auto; padding-bottom: 90px; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    thead th { position: sticky; top: 0; z-index: 10; background: var(--main-green); color: white; padding: 10px 0; font-size: 11px; }
-    td { border-bottom: 1px solid #eee; text-align: center; }
+    thead th { position: sticky; top: 0; z-index: 10; background: var(--main); color: #fff; padding: 12px 0; font-size: 11px; }
+    td { border-bottom: 1px solid #eee; text-align: center; height: 50px; }
+    .name-cell { width: 90px; font-weight: bold; font-size: 13px; text-align: left; padding-left: 12px; border-right: 2px solid var(--main); }
+    .status-cell { font-size: 26px; cursor: pointer; user-select: none; }
+    .locked { background: #f5f5f5 !important; color: #bbb !important; cursor: default; }
+    .my-row { background: var(--my-bg) !important; }
     
-    .name-cell { width: 75px; font-weight: bold; font-size: 13px; text-align: left; padding-left: 6px; border-right: 2px solid var(--main-green); height: 45px; }
-    .status-cell { font-size: 22px; cursor: pointer; user-select: none; }
-    .locked { background-color: #f5f5f5 !important; color: #bbb !important; cursor: default; }
-    .my-row { background-color: var(--my-row-bg) !important; }
+    .comment-row { height: 38px; border-bottom: 2px solid #ddd; }
+    .comment-label { font-size: 10px; color: #888; text-align: left; padding-left: 12px; border-right: 2px solid #ccc; background: #fafafa; }
+    .icon-btn { font-size: 20px; cursor: pointer; display: inline-block; width: 100%; height: 100%; line-height: 38px; }
 
-    .comment-row { height: 32px; border-bottom: 2px solid #ddd; }
-    .comment-label { font-size: 10px; color: #7f8c8d; text-align: left; padding-left: 6px; border-right: 2px solid #ccc; background: #fafafa; }
-    .icon-bubble { font-size: 16px; cursor: pointer; }
-    .icon-none { color: #ccc; font-size: 14px; cursor: pointer; }
+    .footer { position: fixed; bottom: 0; left: 0; width: 100%; padding: 15px; background: #fff; border-top: 1px solid #ddd; box-sizing: border-box; z-index: 100; }
+    .btn-save { width: 100%; background: var(--main); color: #fff; border: none; padding: 16px; border-radius: 12px; font-size: 17px; font-weight: bold; cursor: pointer; }
+    
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; z-index: 1000; align-items: center; justify-content: center; }
+    .modal-box { background: #fff; width: 92%; max-width: 450px; border-radius: 16px; padding: 22px; box-sizing: border-box; }
+    .modal-title { font-weight: bold; margin-bottom: 18px; text-align: center; color: var(--main); border-bottom: 2px solid var(--main); padding-bottom: 8px; }
+    .input-row { display: flex; align-items: flex-start; margin-bottom: 14px; }
+    .date-tag { width: 85px; font-size: 12px; color: #555; padding-top: 12px; }
+    .modal-text { flex: 1; height: 55px; border: 1px solid #ccc; border-radius: 8px; padding: 10px; font-size: 14px; resize: none; box-sizing: border-box; }
+    .modal-btns { display: flex; gap: 12px; margin-top: 25px; }
+    .btn-sub { flex: 1; padding: 14px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 15px; }
 
-    /* モーダル */
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; z-index: 1000; align-items: center; justify-content: center; }
-    .modal-content { background: white; width: 92%; max-width: 400px; border-radius: 12px; padding: 15px; box-sizing: border-box; }
-    .modal-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; text-align: center; color: var(--main-green); }
-    .input-group { display: flex; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-    .date-tag { width: 75px; font-size: 12px; color: #666; font-weight: bold; }
-    .modal-textarea { flex: 1; height: 40px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 13px; resize: none; }
-    
-    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; background: white; border-top: 1px solid #ccc; box-sizing: border-box; }
-    .btn-main { width: 100%; background: var(--main-green); color: white; border: none; padding: 13px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-    .btn-sub { flex: 1; padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
-    
-    #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:flex; align-items:center; justify-content:center; z-index:9999; }
+    #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--main); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
-  <div id="loading">読み込み中...</div>
+  <div id="loading"><div class="spinner"></div><div>データを読み込み中...</div></div>
 
-  <div id="registration-view" style="display:none; padding:20px; text-align:center;">
-    <h3>初回登録</h3>
-    <select id="name-list" style="width:100%; padding:12px; margin:15px 0;"></select>
-    <button class="btn-main" onclick="link()">登録する</button>
+  <div id="registration-view" style="display:none; padding:50px 25px; text-align:center;">
+    <h2 style="color:var(--main)">家族アカウント連携</h2>
+    <p style="color:#666; margin-bottom:30px;">自身の名前を選択して「登録」を押してください。</p>
+    <select id="name-list" style="width:100%; padding:16px; font-size:16px; margin-bottom:25px; border: 1px solid #ccc; border-radius:10px;"></select>
+    <button class="btn-save" onclick="link()">登録を完了する</button>
   </div>
 
-  <div class="container" id="main-view" style="display:none;">
-    <h4 id="weekTitle" style="text-align:center; margin:10px 0;"></h4>
-    <div id="wrapper" class="table-wrapper"><table id="mainTable"></table></div>
-    <div class="footer-bar" id="main-footer">
-        <button class="btn-main" onclick="saveToServer()">保存して閉じる</button>
+  <div id="main-view" style="display:none; flex: 1; flex-direction: column;">
+    <h3 id="weekTitle" style="text-align:center; margin:18px 0; color:#444;"></h3>
+    <div class="table-wrapper"><table id="mainTable"></table></div>
+    <div class="footer" id="footer-area">
+      <button class="btn-save" onclick="save()">保存して閉じる</button>
     </div>
   </div>
 
-  <div id="modal" class="modal-overlay">
-    <div class="modal-content">
-      <div id="modal-title" class="modal-title">コメント</div>
-      <div id="modal-body"></div>
-      <div style="display:flex; gap:10px; margin-top:15px;">
-        <button id="modal-cancel-btn" class="btn-sub" style="background:#95a5a6; color:white;" onclick="closeModal()">キャンセル</button>
-        <button id="modal-apply-btn" class="btn-sub" style="background:var(--main-green); color:white;" onclick="applyComments()">OK（戻る）</button>
+  <div id="modal" class="modal">
+    <div class="modal-box">
+      <div id="m-title" class="modal-title"></div>
+      <div id="m-body"></div>
+      <div class="modal-btns">
+        <button id="m-cancel-btn" class="btn-sub" style="background:#eee; color:#666;" onclick="closeM()">キャンセル</button>
+        <button id="m-ok-btn" class="btn-sub" style="background:var(--main); color:#fff" onclick="applyM()">OK</button>
       </div>
     </div>
   </div>
 
   <script>
-    /**
-     * ==========================================
-     * 【最上部：定数設定】
-     * ==========================================
-     */
-    const APP_CONFIG = {
+    const CONFIG = {
       GAS_URL: "https://script.google.com/macros/s/AKfycbyK70SuUPhT2tt5htRxPlCHAySTSzT7TfPFmRg8S4vuS6HP7eM03Uw_r3u8D_nQdjSb/exec",
       LIFF_ID: "2009266487-GEiMe9Ei",
-      STATUS_CYCLE: ["〇", "△", "×", "-"] // タップした時の切り替え順
+      CYCLE: ["〇", "△", "×", "-"]
     };
 
     let MY_ID = "", IS_VIEW = false, DATES = [], FAMILIES = [];
@@ -85,7 +79,7 @@
       const p = new URLSearchParams(location.search);
       IS_VIEW = (p.get('mode') === 'view');
       if (!IS_VIEW) {
-        await liff.init({ liffId: APP_CONFIG.LIFF_ID });
+        await liff.init({ liffId: CONFIG.LIFF_ID });
         if (!liff.isLoggedIn()) { liff.login(); return; }
         MY_ID = (await liff.getProfile()).userId;
       }
@@ -93,128 +87,128 @@
     }
 
     async function fetchData() {
-      const res = await fetch(`${APP_CONFIG.GAS_URL}?uid=${MY_ID}&action=get&mode=${IS_VIEW?'view':''}`);
-      const json = await res.json();
-      if (json.status === "success") {
-        DATES = json.data.dates;
-        FAMILIES = json.data.families;
-        document.getElementById("weekTitle").innerText = json.data.weekLabel + (IS_VIEW ? " (閲覧)" : "");
-        if (IS_VIEW) document.getElementById("main-footer").style.display = "none";
-        render();
-        document.getElementById("main-view").style.display = "flex";
-        document.getElementById("loading").style.display = "none";
-      } else {
-        document.getElementById("loading").style.display = "none";
-        document.getElementById("registration-view").style.display = "block";
-        const sel = document.getElementById("name-list");
-        json.list.forEach(i => sel.add(new Option(i.name, i.id)));
-      }
+      try {
+        const res = await fetch(`${CONFIG.GAS_URL}?uid=${MY_ID}&action=get&mode=${IS_VIEW?'view':''}`);
+        const json = await res.json();
+        if (json.status === "success") {
+          DATES = json.data.dates; 
+          FAMILIES = json.data.families;
+          document.getElementById("weekTitle").innerText = json.data.weekLabel + (IS_VIEW?" (閲覧モード)":"");
+          if (IS_VIEW) document.getElementById("footer-area").style.display = "none";
+          render();
+          document.getElementById("main-view").style.display = "flex";
+        } else if (json.status === "unregistered") {
+          const sel = document.getElementById("name-list");
+          json.list.forEach(f => sel.add(new Option(f.name, f.id)));
+          document.getElementById("registration-view").style.display = "block";
+        }
+      } catch (e) { alert("データ取得に失敗しました。\n" + e); }
+      document.getElementById("loading").style.display = "none";
     }
 
     function render() {
-      let html = `<thead><tr><th>氏名</th>`;
-      DATES.forEach(d => html += `<th class="${d.isLocked?'locked':''}">${d.label}</th>`);
-      html += "</tr></thead><tbody>";
+      let h = `<thead><tr><th>氏名</th>`;
+      DATES.forEach(d => h += `<th class="${d.isLocked?'locked':''}">${d.label}</th>`);
+      h += `</tr></thead><tbody>`;
 
-      FAMILIES.forEach((f, fIdx) => {
+      FAMILIES.forEach((f, fi) => {
         const isMe = f.lineIds.includes(MY_ID);
         const rowCls = isMe ? 'my-row' : '';
         
         // 出欠行
-        html += `<tr class="${rowCls}"><td class="name-cell">${f.name}</td>`;
-        f.statuses.forEach((s, dIdx) => {
-          const locked = DATES[dIdx].isLocked;
-          const click = (!IS_VIEW && !locked && isMe) ? `onclick="toggle(${fIdx},${dIdx})"` : "";
-          html += `<td class="status-cell ${locked?'locked':''}" ${click}>${s}</td>`;
+        h += `<tr class="${rowCls}"><td class="name-cell">${f.name}</td>`;
+        f.statuses.forEach((s, di) => {
+          const lock = DATES[di].isLocked;
+          const act = (!IS_VIEW && !lock && isMe) ? `onclick="toggle(${fi},${di})"` : "";
+          h += `<td class="status-cell ${lock?'locked':''}" ${act}>${s}</td>`;
         });
-        html += "</tr>";
+        h += "</tr>";
 
-        // コメント行の表示
-        const hasAnyComment = f.commentStatus.some(c => c !== "");
-        if ((!IS_VIEW && isMe) || (IS_VIEW && hasAnyComment)) {
-          html += `<tr class="comment-row ${rowCls}"><td class="comment-label">└ コメント</td>`;
-          DATES.forEach((d, dIdx) => {
-            const commentText = f.commentStatus[dIdx];
-            const locked = DATES[dIdx].isLocked;
-            let content = "";
+        // コメント行 (自分の行、またはコメントがある他人の行のみ表示)
+        const hasCom = f.commentStatus.some(c => c && c.trim() !== "");
+        if ((!IS_VIEW && isMe) || (IS_VIEW && hasCom)) {
+          h += `<tr class="comment-row ${rowCls}"><td class="comment-label">└ コメント</td>`;
+          DATES.forEach((d, di) => {
+            const txt = f.commentStatus[di];
+            const lock = DATES[di].isLocked;
+            let inner = "";
             if (!IS_VIEW && isMe) {
-              content = commentText ? `<span class="icon-bubble" onclick="openInputModal()">💬</span>` : `<span class="icon-none" onclick="openInputModal()">-</span>`;
-            } else if (IS_VIEW && commentText) {
-              content = `<span class="icon-bubble" onclick="viewPopup('${f.name}','${d.label}','${commentText}')">💬</span>`;
-            } else {
-              content = `<span class="icon-none">-</span>`;
-            }
-            html += `<td class="${locked?'locked':''}">${content}</td>`;
+              inner = txt ? `<span class="icon-btn" onclick="openInput()">💬</span>` : `<span class="icon-btn" style="color:#ccc" onclick="openInput()">-</span>`;
+            } else if (IS_VIEW && txt) {
+              inner = `<span class="icon-btn" onclick="viewCom('${f.name}','${d.label}','${txt.replace(/\n/g,'<br>')}')">💬</span>`;
+            } else { inner = "-"; }
+            h += `<td class="${lock?'locked':''}">${inner}</td>`;
           });
-          html += "</tr>";
+          h += "</tr>";
         }
       });
-      document.getElementById("mainTable").innerHTML = html + "</tbody>";
+      document.getElementById("mainTable").innerHTML = h + "</tbody>";
     }
 
-    function toggle(fIdx, dIdx) {
-      const current = FAMILIES[fIdx].statuses[dIdx];
-      const cycle = APP_CONFIG.STATUS_CYCLE;
-      FAMILIES[fIdx].statuses[dIdx] = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+    function toggle(fi, di) {
+      const cur = FAMILIES[fi].statuses[di];
+      FAMILIES[fi].statuses[di] = CONFIG.CYCLE[(CONFIG.CYCLE.indexOf(cur)+1)%CONFIG.CYCLE.length];
       render();
     }
 
-    // 入力モーダルを開く
-    function openInputModal() {
-      const myFam = FAMILIES.find(f => f.lineIds.includes(MY_ID));
-      document.getElementById("modal-title").innerText = "コメント編集";
-      document.getElementById("modal-apply-btn").style.display = "block";
-      document.getElementById("modal-cancel-btn").innerText = "キャンセル";
-      
-      let html = "";
-      DATES.forEach((d, idx) => {
-        html += `<div class="input-group">
-                  <div class="date-tag">${d.label}</div>
-                  <textarea id="edit-com-${idx}" class="modal-textarea" placeholder="なし">${myFam.commentStatus[idx] || ""}</textarea>
-                </div>`;
-      });
-      document.getElementById("modal-body").innerHTML = html;
-      document.getElementById("modal").style.display = "flex";
-    }
-
-    // 入力内容を適用してメイン画面に戻る（まだGASには送らない）
-    function applyComments() {
-      const myFam = FAMILIES.find(f => f.lineIds.includes(MY_ID));
+    // コメント入力モーダル (メモリ上のFAMILIESを更新するだけ)
+    function openInput() {
+      const me = FAMILIES.find(f => f.lineIds.includes(MY_ID));
+      document.getElementById("m-title").innerText = "コメント編集";
+      document.getElementById("m-ok-btn").style.display = "block";
+      document.getElementById("m-cancel-btn").innerText = "キャンセル";
+      let h = "";
       DATES.forEach((d, i) => {
-        myFam.commentStatus[i] = document.getElementById(`edit-com-${i}`).value;
+        h += `<div class="input-row"><div class="date-tag">${d.label}</div>
+              <textarea id="edit-${i}" class="modal-text" placeholder="特記事項なし">${me.commentStatus[i]||""}</textarea></div>`;
       });
-      closeModal();
-      render();
-    }
-
-    // 閲覧用ポップアップ
-    function viewPopup(name, date, text) {
-      document.getElementById("modal-title").innerText = `${name} (${date})`;
-      document.getElementById("modal-body").innerHTML = `<div style="padding:10px; font-size:14px; line-height:1.5;">${text.replace(/\n/g, '<br>')}</div>`;
-      document.getElementById("modal-apply-btn").style.display = "none";
-      document.getElementById("modal-cancel-btn").innerText = "閉じる";
+      document.getElementById("m-body").innerHTML = h;
       document.getElementById("modal").style.display = "flex";
     }
 
-    function closeModal() { document.getElementById("modal").style.display = "none"; }
+    function applyM() {
+      const me = FAMILIES.find(f => f.lineIds.includes(MY_ID));
+      DATES.forEach((_, i) => me.commentStatus[i] = document.getElementById(`edit-${i}`).value);
+      closeM(); render();
+    }
 
-    // サーバーへ一括保存
-    async function saveToServer() {
+    function viewCom(n, d, t) {
+      document.getElementById("m-title").innerText = n + " (" + d + ")";
+      document.getElementById("m-body").innerHTML = `<div style="padding:15px; line-height:1.7; font-size:15px; background:#f5f5f5; border-radius:10px; text-align:left;">${t}</div>`;
+      document.getElementById("m-ok-btn").style.display = "none";
+      document.getElementById("m-cancel-btn").innerText = "閉じる";
+      document.getElementById("modal").style.display = "flex";
+    }
+
+    function closeM() { document.getElementById("modal").style.display = "none"; }
+
+    // 最終保存処理
+    async function save() {
       document.getElementById("loading").style.display = "flex";
-      const myFam = FAMILIES.find(f => f.lineIds.includes(MY_ID));
+      const me = FAMILIES.find(f => f.lineIds.includes(MY_ID));
       const payload = {
-        att: DATES.map((d, i) => ({ dateLabel: d.label, status: myFam.statuses[i] })),
-        com: DATES.map((d, i) => ({ dateLabel: d.label, text: myFam.commentStatus[i] }))
+        att: DATES.map((d, i) => ({ dateLabel: d.label, status: me.statuses[i] })),
+        com: DATES.map((d, i) => ({ dateLabel: d.label, text: me.commentStatus[i] }))
       };
-      await fetch(`${APP_CONFIG.GAS_URL}?action=update_all&uid=${MY_ID}&familyId=${myFam.id}&payload=${encodeURIComponent(JSON.stringify(payload))}`);
-      liff.closeWindow();
+      try {
+        const url = `${CONFIG.GAS_URL}?action=update_all&uid=${MY_ID}&familyId=${me.id}&payload=${encodeURIComponent(JSON.stringify(payload))}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.status === "success") {
+          liff.closeWindow();
+        } else { alert("保存に失敗しました: " + json.message); }
+      } catch (e) { alert("サーバー通信エラー: " + e); }
+      document.getElementById("loading").style.display = "none";
     }
 
     async function link() {
-      const id = document.getElementById("name-list").value;
-      await fetch(`${APP_CONFIG.GAS_URL}?uid=${MY_ID}&action=link&family_id=${id}`);
+      const fid = document.getElementById("name-list").value;
+      if(!fid) return;
+      document.getElementById("loading").style.display = "flex";
+      await fetch(`${CONFIG.GAS_URL}?uid=${MY_ID}&action=link&family_id=${fid}`);
       location.reload();
     }
+
     window.onload = init;
   </script>
 </body>
