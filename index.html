@@ -2,447 +2,159 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>父兄出欠確認アプリ</title> 
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  
   <style>
-    /**
-     * ==========================================
-     * スタイル（CSS）定数・デザイン定義
-     * ==========================================
-     */
-    :root {
-      /* アプリケーションの基調となるテーマカラー */
-      --main-green: #27ae60;    /* ヘッダーやボタンのメインカラー（緑） */
-      --sat-blue: #2980b9;      /* 土曜日のヘッダー背景色（青） */
-      --sun-red: #d35400;       /* 日曜・祝日のヘッダー背景色（赤） */
-      --bg-light: #f4f7f8;      /* アプリ全体の背景色（薄いグレー） */
-      --my-row-bg: #fffbe6;     /* 自分の行を強調するための背景色（薄い黄色） */
-      
-      /* レイアウト調整用 */
-      --name-col-width: 70px;   /* 氏名列の固定幅 */
-    }
-
-    /* 画面全体がスクロールしてしまわないよう、アプリ風に固定表示する */
-    html, body { 
-      position: fixed; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; 
-      font-family: sans-serif; margin: 0; background: var(--bg-light); color: #333; 
-    }
-    
-    /* コンテンツを画面内に収め、内部だけをスクロールさせるための外枠 */
-    .container { padding: 4px; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; box-sizing: border-box; }
-    h3 { text-align: center; font-size: 16px; margin: 6px 0; width: 100%; }
-    
-    /* --- テーブルエリアのスタイル --- */
-    /* テーブル全体を包み、Y軸（縦方向）のみスクロール可能にする。下部はフッター分(110px)余白を開ける */
-    .table-wrapper { 
-      flex: 1; overflow-y: auto; overflow-x: hidden; border-radius: 8px; 
-      background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 110px; position: relative; 
-    }
+    :root { --main-green: #27ae60; --bg-light: #f4f7f8; --my-row-bg: #fffbe6; }
+    html, body { position: fixed; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; margin: 0; background: var(--bg-light); }
+    .container { padding: 4px; display: flex; flex-direction: column; height: 100dvh; box-sizing: border-box; }
+    .table-wrapper { flex: 1; overflow-y: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 140px; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    
-    /* ヘッダー行をスクロール時に上部へ固定（sticky）する */
     thead { position: sticky; top: 0; z-index: 10; }
-    th { background: var(--main-green); color: white; padding: 4px 0; font-size: 11px; border: none; font-weight: bold; }
-    .name-col-head { width: var(--name-col-width); }
-    th.sat { background: var(--sat-blue); } 
-    th.sun { background: var(--sun-red); } 
-    
-    /* ヘッダー内の「集計（〇△×の数）」を表示するボックスのスタイル */
-    .count-box { font-size: 10px; margin-top: 3px; padding: 2px 4px; background: rgba(0,0,0,0.15); font-weight: normal; line-height: 1.3; }
-    .count-row { display: flex; justify-content: space-between; }
-    
-    /* --- テーブルセル（データ行）のスタイル --- */
-    td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
-    /* 氏名セル（左端）の装飾。長い名前は折り返す（break-all） */
-    .name-cell { 
-      width: var(--name-col-width); padding: 0 2px; font-weight: bold; font-size: 12px; 
-      text-align: left; background: #fafafa; border-right: 2px solid var(--main-green); word-break: break-all; 
-    }
-    /* 自分が属する家族の行をハイライト */
+    th { background: var(--main-green); color: white; padding: 4px 0; font-size: 11px; }
+    td { border-bottom: 1px solid #eee; height: 55px; text-align: center; }
+    .name-cell { width: 70px; font-weight: bold; font-size: 12px; text-align: left; padding-left: 4px; border-right: 2px solid var(--main-green); }
     .my-row { background-color: var(--my-row-bg) !important; }
+    .status-cell { font-size: 22px; cursor: pointer; position: relative; }
+    .locked { background-color: #f0f0f0 !important; color: #aaa !important; cursor: default; }
+    .comment-trigger { font-size: 14px; display: block; margin-top: -4px; color: #2980b9; }
     
-    /* 出欠ステータス記号のスタイル。タップ領域として分かりやすいように大きくする */
-    .status-cell { font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-    .status-〇 { color: var(--main-green); font-weight: bold; } 
-    .status-△ { color: #f39c12; font-weight: bold; }
-    .status-× { color: #7f8c8d; font-weight: bold; }
-    .status-- { color: #ccc; }
-    
-    /* --- フッター領域（コメント入力欄と保存ボタン） --- */
-    /* 画面の最下部に固定表示する */
-    .footer-bar { 
-      position: fixed; bottom: 0; left: 0; width: 100%; padding: 8px; background: white; 
-      border-top: 1px solid #ddd; display: none; box-sizing: border-box; z-index: 100; 
-    }
-    .deadline-banner { color: #d35400; font-size: 12px; text-align: center; margin-bottom: 4px; font-weight: bold; }
-    textarea { 
-      width: 100%; height: 45px; border: 1px solid #ccc; border-radius: 4px; padding: 4px; 
-      font-size: 13px; box-sizing: border-box; margin-bottom: 6px; resize: none; font-family: inherit; 
-    }
-    .btn-save { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-    .btn-save:disabled { background: #ccc; cursor: not-allowed; }
-    
-    /* --- UIパーツ（ローディングとスクロールインジケーター） --- */
-    /* データ通信中に画面全体を覆うローディングオーバーレイ */
-    #loading { 
-      position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); 
-      display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; 
-    }
-    .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top: 4px solid var(--main-green); border-radius: 50%; animation: spin 1s linear infinite; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    
-    /* 画面下部にデータが続いていることを知らせるアニメーションバッジ */
-    .scroll-indicator { 
-      position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); color: white; 
-      padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; display: none; z-index: 1000; 
-      animation: bounce 1.5s infinite; pointer-events: none; /* タップを貫通させる */
-    }
-    @keyframes bounce { 0%, 100% { bottom: 120px; } 50% { bottom: 110px; } }
+    /* 下部コメント表示エリア（閲覧モード用） */
+    .comment-board { padding: 10px; background: #fff; border-top: 2px solid var(--main-green); font-size: 12px; }
+    .comment-item { margin-bottom: 8px; border-bottom: 1px dashed #ccc; padding-bottom: 4px; }
+    .comment-date-tag { font-weight: bold; color: var(--main-green); margin-right: 5px; }
+
+    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 8px; background: white; border-top: 1px solid #ddd; z-index: 100; box-sizing: border-box; }
+    textarea { width: 100%; height: 60px; border: 1px solid #ccc; border-radius: 4px; padding: 6px; font-size: 13px; box-sizing: border-box; margin-bottom: 6px; }
+    .btn-save { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; }
+    #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
   </style>
 </head>
-
 <body>
-  <div id="loading"><div class="spinner"></div><p id="loadingText" style="margin-top:10px; font-weight:bold;">読込中...</p></div>
+  <div id="loading"><div>読込中...</div></div>
 
   <div id="registration-view" style="display:none; padding:20px; text-align:center;">
-    <h3 id="regTitle">初回登録</h3>
-    <p>あなたのお名前を選択してください。</p>
-    <select id="name-list" style="width:100%; padding:12px; margin:15px 0; font-size:16px;"></select>
+    <h3>初回登録</h3>
+    <select id="name-list" style="width:100%; padding:12px; margin:15px 0;"></select>
     <button class="btn-save" onclick="link()">登録する</button>
   </div>
 
   <div class="container" id="main-view" style="display:none;">
-    <h3 id="weekTitle"></h3>
-    
-    <div class="table-wrapper" id="content-area" onscroll="checkScroll()">
+    <h3 id="weekTitle" style="text-align:center; margin:5px 0; font-size:14px;"></h3>
+    <div class="table-wrapper">
       <table id="mainTable"></table>
+      <div id="commentBoard" class="comment-board"></div>
     </div>
     
-    <div id="scrollIndicator" class="scroll-indicator">▼ 下に続きがあります</div>
-    
     <div id="footer" class="footer-bar">
-      <div id="deadline-msg" class="deadline-banner"></div>
-      <textarea id="comment-box" placeholder="連絡事項（任意）"></textarea>
-      <button id="save-btn" class="btn-save" onclick="saveAll()">変更を保存して閉じる</button>
+      <textarea id="comment-box" placeholder="連絡事項を入力"></textarea>
+      <button id="save-btn" class="btn-save" onclick="saveAll()">保存して閉じる</button>
     </div>
   </div>
 
   <script>
-    /**
-     * ==========================================
-     * 【フロントエンド設定・定数定義エリア】
-     * ==========================================
-     */
-    const SETTINGS = {
-      GAS_URL: "https://script.google.com/macros/s/AKfycbyK70SuUPhT2tt5htRxPlCHAySTSzT7TfPFmRg8S4vuS6HP7eM03Uw_r3u8D_nQdjSb/exec", // GASのデプロイURL
-      LIFF_ID: "2009266487-GEiMe9Ei"            // LINE Developersで取得したLIFF ID
-    };
+    const SETTINGS = { GAS_URL: "https://script.google.com/macros/s/AKfycbyK70SuUPhT2tt5htRxPlCHAySTSzT7TfPFmRg8S4vuS6HP7eM03Uw_r3u8D_nQdjSb/exec", LIFF_ID: "2009266487-GEiMe9Ei" };
+    let MY_LINE_ID = "", IS_VIEW_MODE = false, MY_NAME = "";
+    let days = [], rawData = [];
 
-    // UIで扱う出欠記号とその表示名（集計用）の定義
-    const UI_CONFIG = { 
-      SIGNS: ["〇", "△", "×", "-"], 
-      LABELS: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" } 
-    };
-
-    // 通信アクションの定義
-    const API_ACTION = {
-      GET: "get",
-      LINK: "link",
-      UPDATE: "update_all"
-    };
-
-    /**
-     * ==========================================
-     * グローバル変数（状態管理用）
-     * ==========================================
-     */
-    let MY_LINE_ID = "";               // LIFFから取得したLINEユーザーID
-    let IS_VIEW_MODE = false;          // URLパラメータによる閲覧専用モード判定
-    
-    let days = [];                     // GASから取得した日付ラベルの配列（例: ["3/24(火)", ...]）
-    let rawData = [];                  // GASから取得した家族・出欠データの配列
-    let isExpired = false;             // 回答期限切れフラグ
-    let originalComment = "";          // 初期表示時のコメント内容（変更検知用）
-    
-    let changedDayIndices = new Set(); // ユーザーがステータスを変更した日付のインデックス番号を保持するセット
-    let isSaving = false;              // 二重送信防止フラグ
-
-    /**
-     * ==========================================
-     * メインロジック・関数群
-     * ==========================================
-     */
-
-    /**
-     * アプリ起動時の初期化処理
-     * LIFFの初期化（ログイン状態の確認）と、GASからのデータ取得を行う
-     */
     async function init() {
-      // URLパラメータ "?mode=view" が付与されているか確認
       const params = new URLSearchParams(window.location.search);
-      IS_VIEW_MODE = (params.get('mode') === 'view'); 
-      
-      try {
-        // 閲覧モードでなければLINE連携を行う
-        if (!IS_VIEW_MODE) {
-          await liff.init({ liffId: SETTINGS.LIFF_ID });
-          // 未ログインならLINEのログイン画面へリダイレクト
-          if (!liff.isLoggedIn()) { 
-            liff.login(); 
-            return; 
-          }
-          // ログイン済みならプロファイルを取得し、IDを保持
-          const profile = await liff.getProfile();
-          MY_LINE_ID = profile.userId;
-        }
-        
-        // GASからデータを取得する
-        await fetchData();
-      } catch (e) { 
-        alert("初期化エラー: 通信環境を確認してください。\n" + e.message); 
+      IS_VIEW_MODE = (params.get('mode') === 'view');
+      if (!IS_VIEW_MODE) {
+        await liff.init({ liffId: SETTINGS.LIFF_ID });
+        if (!liff.isLoggedIn()) { liff.login(); return; }
+        const p = await liff.getProfile(); MY_LINE_ID = p.userId;
       }
+      fetchData();
     }
 
-    /**
-     * GASサーバーから設定や出欠データを取得する
-     */
     async function fetchData() {
-      // URLに付加されている余計なパラメータを除去したクリーンなURL（自動記録用）
-      const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
-      // キャッシュを回避するために Date.now() を付与してリクエストを作成
-      const url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=${API_ACTION.GET}&mode=${IS_VIEW_MODE ? 'view' : ''}&appUrl=${appUrl}&v=${Date.now()}`;
+      const url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE?'view':''}`;
+      const res = await fetch(url);
+      const data = await res.json();
       
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
+      if (data.status === "success") {
+        days = data.data.dates;
+        rawData = data.data.families;
+        document.getElementById("weekTitle").innerText = data.data.weekLabel;
+        document.getElementById("comment-box").value = data.data.myComment || "";
         
-        // データ取得成功（登録済み、または閲覧モード）の場合
-        if (data.status === "success") {
-          days = data.data.dates; 
-          rawData = data.data.families; 
-          isExpired = data.data.isExpired; 
-          originalComment = data.data.myComment || "";
-          
-          document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
-          document.getElementById("comment-box").value = originalComment;
-          
-          // 閲覧モードでない場合はフッターを表示し、期限の状態に応じた制御を行う
-          if (!IS_VIEW_MODE) {
-            document.getElementById("footer").style.display = "block";
-            
-            if (isExpired) {
-              // 期限切れの場合：警告文を表示し、入力・保存系をすべて無効化（disabled）にする
-              document.getElementById("deadline-msg").innerText = `回答期限（${data.data.deadlineLabel}）を過ぎたため閲覧のみ可能です`;
-              document.getElementById("save-btn").disabled = true;
-              document.getElementById("comment-box").disabled = true;
-            } else if (data.data.deadlineLabel) {
-              // 期限内だが期限設定が存在する場合：注意喚起として期限を表示する
-              document.getElementById("deadline-msg").innerText = `回答期限: ${data.data.deadlineLabel}`;
-            }
-          }
-          
-          // メイン画面を表示し、ローディングを隠す
-          document.getElementById("main-view").style.display = "flex";
-          document.getElementById("loading").style.display = "none";
-          
-          // テーブルのHTMLを構築して描画
-          render();
-          
-          // 描画が完了し、要素の高さが確定した少し後にスクロールインジケーターの要否を判定する
-          setTimeout(checkScroll, 500); 
-          
-        } else if (data.status === "unregistered") {
-          // 未登録ユーザーの場合：登録画面を表示
-          document.getElementById("loading").style.display = "none";
-          document.getElementById("registration-view").style.display = "block";
-          
-          // GASから渡された「空き枠のある家族リスト」をプルダウンにセットする
-          const select = document.getElementById("name-list");
-          data.list.forEach(item => {
-            let opt = document.createElement("option"); 
-            opt.value = item.id; 
-            opt.text = item.name; 
-            select.appendChild(opt);
-          });
-        }
-      } catch (e) { 
-        alert("データ取得エラー: サーバーとの通信に失敗しました。"); 
+        const myFamily = rawData.find(f => f.lineIds.includes(MY_LINE_ID));
+        if (myFamily) MY_NAME = myFamily.name;
+
+        if (IS_VIEW_MODE) document.getElementById("footer").style.display = "none";
+        
+        render(data.data.allComments);
+        document.getElementById("main-view").style.display = "flex";
+        document.getElementById("loading").style.display = "none";
+      } else {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("registration-view").style.display = "block";
+        const sel = document.getElementById("name-list");
+        data.list.forEach(i => sel.add(new Option(i.name, i.id)));
       }
     }
 
-    /**
-     * rawData（家族配列）をもとにHTMLテーブルを構築し、画面に反映する
-     */
-    function render() {
-      // 1. 各日付ごとの「〇△×-」の集計（カウント）用オブジェクトを作成する
-      const totals = days.map(() => {
-        let obj = {}; 
-        UI_CONFIG.SIGNS.forEach(s => obj[s] = 0); 
-        return obj;
-      });
-      
-      // 全家族の全日付をループし、該当する記号のカウントを増やす
-      rawData.forEach(f => { 
-        f.statuses.forEach((s, i) => { 
-          if (totals[i].hasOwnProperty(s)) totals[i][s]++; 
-        }); 
-      });
-
-      // 2. テーブルヘッダーの構築（一番左は氏名列）
-      let html = `<thead><tr><th class="name-col-head">団員父兄</th>`;
-      days.forEach((d, i) => {
-        // 土曜は青クラス、日曜・祝日は赤クラスを付与
-        let cls = (d.includes("日") || d.includes("祝")) ? "sun" : d.includes("土") ? "sat" : "";
-        html += `<th class="${cls}">${d}<div class="count-box">`;
-        
-        // 集計結果をヘッダー内に描画する
-        UI_CONFIG.SIGNS.forEach(s => { 
-          html += `<div class="count-row"><span>${s}${UI_CONFIG.LABELS[s]}</span><span>${totals[i][s]}</span></div>`; 
-        });
-        html += `</div></th>`;
-      });
+    function render(allComments) {
+      let html = `<thead><tr><th style="width:70px">氏名</th>`;
+      days.forEach(d => html += `<th class="${d.isLocked?'locked':''}">${d.label}</th>`);
       html += "</tr></thead><tbody>";
-      
-      // 3. テーブルボディ（各家族の行）の構築
+
       rawData.forEach((f, fIdx) => {
-        // 自分のIDが含まれる家族かどうかを判定
-        const isMe = (MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
-        
-        // 自分の行ならハイライト用のクラスを付与
-        html += `<tr class="${isMe ? 'my-row' : ''}"><td class="name-cell">${f.name}</td>`;
-        
-        // 各日付の出欠セルを生成
+        const isMe = f.lineIds.includes(MY_LINE_ID);
+        html += `<tr class="${isMe?'my-row':''}">`;
+        html += `<td class="name-cell">${f.name}</td>`;
         f.statuses.forEach((s, dIdx) => {
-          // 閲覧モードでない ＆ 期限切れでない ＆ 自分の行である場合のみ、タップ操作（onclick）を有効にする
-          const clickAttr = (!IS_VIEW_MODE && !isExpired && isMe) ? `onclick="toggle(${fIdx},${dIdx})"` : "";
-          // 状態(〇△×)に応じた文字色クラスを付与
-          html += `<td class="status-cell status-${s}" ${clickAttr}>${s}</td>`;
+          const locked = days[dIdx].isLocked;
+          const click = (!IS_VIEW_MODE && !locked && isMe) ? `onclick="toggle(${fIdx},${dIdx})"` : "";
+          const commentBtn = (!IS_VIEW_MODE && isMe) ? `<span class="comment-trigger" onclick="prepComment('${days[dIdx].label}')">💬</span>` : "";
+          html += `<td class="status-cell ${locked?'locked':''}" ${click}>${s}${commentBtn}</td>`;
         });
         html += "</tr>";
       });
-      
-      // 構築したHTMLをDOMに流し込む
       document.getElementById("mainTable").innerHTML = html + "</tbody>";
+
+      // コメント掲示板の描画
+      let cHtml = "<strong>【連絡事項】</strong><br>";
+      if (allComments.length === 0) cHtml += "なし";
+      allComments.forEach(c => {
+        // [3/24] のような形式を強調
+        const text = c.text.replace(/\[(.*?)\]/g, '<span class="comment-date-tag">[$1]</span>');
+        cHtml += `<div class="comment-item"><strong>${c.name}</strong>: ${text}</div>`;
+      });
+      document.getElementById("commentBoard").innerHTML = cHtml;
     }
 
-    /**
-     * 出欠セルがタップされた際に、記号をローテーションさせる関数
-     * @param {number} fIdx - 家族配列（rawData）におけるインデックス
-     * @param {number} dIdx - 日付配列（days）におけるインデックス
-     */
     function toggle(fIdx, dIdx) {
-      const signs = UI_CONFIG.SIGNS;
-      // 現在の記号を取得
-      const current = rawData[fIdx].statuses[dIdx];
-      
-      // 配列上での次の記号を取得（配列の最後なら最初に戻る）
-      rawData[fIdx].statuses[dIdx] = signs[(signs.indexOf(current) + 1) % signs.length];
-      
-      // 変更があった日付のインデックスを Set に記録する（保存時にこれだけを送信するため）
-      changedDayIndices.add(dIdx); 
-      
-      // 画面を再描画して変更を反映（集計数も連動して更新される）
-      render();
+      const signs = ["〇", "△", "×", "-"];
+      rawData[fIdx].statuses[dIdx] = signs[(signs.indexOf(rawData[fIdx].statuses[dIdx]) + 1) % signs.length];
+      render([]); // 簡易再描画（コメントは維持）
     }
 
-    /**
-     * ユーザーが変更した出欠情報とコメントをGASへ送信して保存する
-     */
+    function prepComment(dateLabel) {
+      const box = document.getElementById("comment-box");
+      const tag = `[${dateLabel}] ${MY_NAME}：`;
+      if (!box.value.includes(tag)) {
+        box.value += (box.value ? "\n" : "") + tag;
+      }
+      box.focus();
+    }
+
     async function saveAll() {
-      // 二重送信防止
-      if (isSaving) return;
-      
-      const currentComment = document.getElementById("comment-box").value;
-      const commentChanged = (currentComment !== originalComment);
-      
-      // 出欠の変更がなく、かつコメントの変更もない場合は、通信せずにそのまま画面を閉じる
-      if (changedDayIndices.size === 0 && !commentChanged) { 
-        liff.closeWindow(); 
-        return; 
-      }
-      
-      isSaving = true;
-      document.getElementById("loadingText").innerText = "保存中..."; 
       document.getElementById("loading").style.display = "flex";
-      
-      // 保存対象（自分）の家族データを特定
-      const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
-      
-      // 変更があった日付のデータだけを抽出し、ペイロード（送信データ）を作成する
-      const payload = Array.from(changedDayIndices).map(dayIdx => ({
-        dateLabel: days[dayIdx],
-        status: myData.statuses[dayIdx]
-      }));
-      
-      try {
-        const url = `${SETTINGS.GAS_URL}?action=${API_ACTION.UPDATE}`;
-        
-        // GETリクエストで送信するため、パラメータをURLエンコードして構築
-        const params = new URLSearchParams();
-        params.append("uid", MY_LINE_ID);
-        params.append("familyId", myData.id);
-        // 配列データはJSON文字列化して送信する
-        params.append("payload", JSON.stringify(payload));
-        
-        // コメントに変更があった場合のみパラメータに含める
-        if (commentChanged) {
-          params.append("comment", currentComment);
-        }
-        
-        // GASのAPIをコール
-        await fetch(url + "&" + params.toString());
-        
-        // 保存に成功したらLIFFウィンドウを閉じてLINEのトーク画面に戻る
-        liff.closeWindow();
-      } catch (e) { 
-        alert("保存エラーが発生しました。通信環境を確認してください。"); 
-        document.getElementById("loading").style.display = "none"; 
-        isSaving = false; // エラー時はフラグを戻し、再操作可能にする
-      }
+      const myData = rawData.find(f => f.lineIds.includes(MY_LINE_ID));
+      const payload = days.map((d, i) => ({ dateLabel: d.label, status: myData.statuses[i] }));
+      const url = `${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&familyId=${myData.id}&payload=${encodeURIComponent(JSON.stringify(payload))}&comment=${encodeURIComponent(document.getElementById("comment-box").value)}`;
+      await fetch(url);
+      liff.closeWindow();
     }
 
-    /**
-     * 初回起動時に、プルダウンで選択された家族と自分のLINE IDを紐づける
-     */
     async function link() {
-      const sid = document.getElementById("name-list").value;
-      document.getElementById("loading").style.display = "flex";
-      try {
-        // GASのlinkアクションをコール
-        await fetch(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=${API_ACTION.LINK}&family_id=${sid}`);
-        // 成功したら画面をリロードし、通常モード（getアクション）として再起動させる
-        window.location.reload();
-      } catch (e) { 
-        alert("登録エラー: サーバーとの通信に失敗しました。"); 
-      }
+      const id = document.getElementById("name-list").value;
+      await fetch(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${id}`);
+      window.location.reload();
     }
 
-    /**
-     * テーブルエリアのスクロール状況を監視し、
-     * 「下に続きがある」ことを知らせるインジケーターの表示/非表示を切り替える
-     */
-    function checkScroll() {
-      const area = document.getElementById('content-area');
-      const indicator = document.getElementById('scrollIndicator');
-      
-      // area.scrollHeight: コンテンツの全体の高さ
-      // area.clientHeight: 現在画面に表示されているエリアの高さ
-      // area.scrollTop: 上からどれだけスクロールしたかの量
-      
-      // コンテンツが画面より大きく、かつ一番下までスクロールしきっていない（残り10px以上のゆとりがある）場合
-      if (area.scrollHeight > area.clientHeight && (area.scrollHeight - area.scrollTop - area.clientHeight) > 10) {
-        indicator.style.display = 'block'; // インジケーターを表示
-      } else {
-        indicator.style.display = 'none';  // 下まで到達したら隠す
-      }
-    }
-    
-    // 画面サイズが変更された場合（スマホの縦横切り替えなど）にもスクロール判定を再実行する
-    window.addEventListener('resize', checkScroll);
-    
-    // HTMLの読み込みが完了したらinit関数を呼び出す
     window.onload = init;
   </script>
 </body>
