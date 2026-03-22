@@ -2,240 +2,490 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <title>父兄出欠確認アプリ</title> 
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  
   <style>
+    /* ==========================================
+     * CSS変数の定義と基本レイアウト (OKコード7維持)
+     * ========================================== */
     :root {
-      --main: #27ae60; --sat: #2980b9; --sun: #d35400; --bg: #f4f7f8;
-      --my-row: #fffbe6; --name-w: 85px;
+      --main-green: #27ae60;      
+      --sat-blue: #2980b9;        
+      --sun-red: #d35400;         
+      --bg-light: #f4f7f8;        
+      --my-row-bg: #fffbe6;       
+      --name-col-width: 70px;     
     }
-    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; background: var(--bg); }
-    .container { display: flex; flex-direction: column; height: 100dvh; }
-    
-    /* テーブルレイアウト：氏名列固定 */
-    .table-wrapper { flex: 1; overflow: auto; background: white; position: relative; }
-    table { border-collapse: separate; border-spacing: 0; width: 100%; }
-    
-    thead th { 
-      position: sticky; top: 0; z-index: 10; background: var(--main); color: white; 
-      padding: 6px 2px; font-size: 11px; border-bottom: 1px solid #ddd;
+
+    html, body {
+      position: fixed; 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden; overscroll-behavior: none; 
+      font-family: sans-serif; margin: 0; background: var(--bg-light); color: #333; 
     }
-    thead th:first-child { left: 0; z-index: 11; width: var(--name-w); min-width: var(--name-w); }
     
+    .container { 
+      padding: 4px; display: flex; flex-direction: column; 
+      height: 100%; height: 100dvh; 
+      overflow: hidden; box-sizing: border-box; 
+    }
+    h3 { text-align: center; font-size: 18px; margin: 6px 0; width: 100%; }
+
+    /* ==========================================
+     * 表 (テーブル) のデザイン
+     * ========================================== */
+    .table-wrapper { 
+      flex: 1; overflow-y: auto; overflow-x: auto; /* 横幅はみ出し許可に変更 */
+      border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+      margin-bottom: 65px; position: relative; 
+    }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 100%; }
+    
+    thead { position: sticky; top: 0; z-index: 10; }
+    th { background: var(--main-green); color: white; padding: 4px 0; font-size: 11px; border: none; font-weight: bold; }
+    .name-col-head { width: var(--name-col-width); position: sticky; left: 0; z-index: 11; }
+    th.sat { background: var(--sat-blue); } 
+    th.sun { background: var(--sun-red); } 
+    
+    .count-box { font-size: 10px; margin-top: 3px; padding: 2px 4px; background: rgba(0,0,0,0.15); font-weight: normal; line-height: 1.3; }
+    .count-row { display: flex; justify-content: space-between; }
+
+    td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
     .name-cell { 
-      position: sticky; left: 0; z-index: 5; background: #fafafa; 
-      width: var(--name-w); min-width: var(--name-w); font-size: 12px; font-weight: bold;
-      padding: 10px 4px; border-right: 2px solid var(--main); border-bottom: 1px solid #eee;
-      text-align: left; box-sizing: border-box;
+      width: var(--name-col-width); padding: 0 2px; font-weight: bold; font-size: 12px; 
+      text-align: left; background: #fafafa; border-right: 2px solid var(--main-green); word-break: break-all; 
+      position: sticky; left: 0; z-index: 5; /* 氏名固定化 */
     }
+    .my-row { background-color: var(--my-row-bg) !important; } 
+    .my-row .name-cell { background-color: var(--my-row-bg) !important; } 
     
-    td { text-align: center; border-bottom: 1px solid #eee; height: 50px; }
-    .status-cell { font-size: 24px; cursor: pointer; user-select: none; }
-    .locked { background: #f0f0f0 !important; color: #aaa !important; cursor: default; }
-    .my-row { background: var(--my-row) !important; }
-    .my-row .name-cell { background: var(--my-row) !important; }
+    .status-cell { font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .status-〇 { color: var(--main-green); font-weight: bold; } 
+    .status-△ { color: #f39c12; font-weight: bold; }
+    .status-× { color: #7f8c8d; font-weight: bold; }
+    .status-- { color: #ccc; }
 
-    /* 集計表示 */
-    .count-box { font-size: 9px; margin-top: 4px; background: rgba(0,0,0,0.1); border-radius: 3px; padding: 2px; font-weight: normal; }
-    .count-line { display: flex; justify-content: space-between; padding: 0 2px; }
+    /* 【追加】②-1: 締切後のスタイル */
+    .locked { background-color: #f2f2f2 !important; color: #bbb !important; cursor: not-allowed; }
 
-    /* コメント行 */
-    .com-row { height: 36px; background: #fff; }
-    .com-label { font-size: 10px; color: #888; text-align: right; padding-right: 8px; border-right: 2px solid #ccc; }
-    .com-icon { font-size: 18px; cursor: pointer; display: block; width: 100%; height: 100%; line-height: 36px; }
+    /* 【追加】②-2: コメント行のスタイル */
+    .com-row { height: 32px; background: #fff; }
+    .com-label { font-size: 10px; color: #888; text-align: right; padding-right: 8px; border-right: 2px solid #ccc; font-weight: normal; }
+    .com-icon { font-size: 16px; cursor: pointer; display: block; width: 100%; height: 100%; line-height: 32px; }
+    .com-text { font-size: 10px; color: #666; cursor: pointer; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40px; }
 
-    /* フッター・ボタン */
-    .footer { padding: 10px; background: white; border-top: 1px solid #ddd; z-index: 100; }
-    .btn-save { width: 100%; background: var(--main); color: white; border: none; padding: 15px; border-radius: 10px; font-size: 16px; font-weight: bold; }
+    /* ==========================================
+     * フッター・ローディング・スクロールガイド・モーダル
+     * ========================================== */
+    .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; background: white; border-top: 1px solid #ddd; display: none; box-sizing: border-box; z-index: 100; }
+    .btn-save { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
 
-    /* モーダル */
-    .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; z-index:1000; align-items:center; justify-content:center; }
-    .modal-content { background:white; width:90%; border-radius:12px; padding:20px; box-sizing:border-box; }
-    .modal-title { font-weight:bold; margin-bottom:15px; border-bottom:2px solid var(--main); padding-bottom:5px; }
-    .edit-item { display:flex; margin-bottom:10px; align-items:center; }
-    .edit-label { width:80px; font-size:12px; }
-    .edit-input { flex:1; padding:8px; border:1px solid #ccc; border-radius:5px; font-size:14px; }
-    .modal-btns { display:flex; gap:10px; margin-top:20px; }
-    .btn-m { flex:1; padding:12px; border:none; border-radius:8px; font-weight:bold; }
+    #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top: 4px solid var(--main-green); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:white; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
-    .spinner { width:40px; height:40px; border:4px solid #f3f3f3; border-top:4px solid var(--main); border-radius:50%; animation:spin 1s linear infinite; }
-    @keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
+    .view-mode .table-wrapper { margin-bottom: 0; }
+    .view-mode td { height: 34px; }
+    .no-schedule-msg { padding: 40px 20px; text-align: center; font-weight: bold; color: #666; }
+
+    .scroll-indicator {
+      position: fixed; bottom: 75px; left: 50%; transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7); color: white; padding: 6px 16px; border-radius: 20px;
+      font-size: 12px; font-weight: bold; display: none; z-index: 1000; pointer-events: none;
+      animation: bounce 1.5s infinite;
+    }
+    @keyframes bounce { 0%, 100% { bottom: 75px; } 50% { bottom: 65px; } }
+    .view-mode .scroll-indicator { bottom: 20px; }
+
+    #debug-panel {
+      position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8);
+      color: #0f0; padding: 5px; font-size: 11px; z-index: 10000;
+      pointer-events: none; border-radius: 4px; display: none; 
+    }
+
+    /* 【追加】②-2: コメント用モーダル */
+    .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:2000; }
+    .modal-box { background:white; width:85%; max-width:400px; border-radius:8px; padding:20px; box-sizing:border-box; }
+    .modal-title { font-weight:bold; margin-bottom:10px; font-size:14px; border-bottom: 2px solid var(--main-green); padding-bottom: 5px; }
+    .modal-input { width:100%; padding:10px; font-size:14px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; margin-bottom:15px; }
+    .modal-btns { display:flex; gap:10px; }
+    .modal-btn { flex:1; padding:10px; border:none; border-radius:4px; font-weight:bold; cursor:pointer; }
   </style>
 </head>
-<body>
-  <div id="loading"><div class="spinner"></div><p>読込中...</p></div>
 
-  <div id="registration-view" style="display:none; padding:40px 20px; text-align:center;">
-    <h3 id="regTitle">初期登録</h3>
-    <select id="name-list" style="width:100%; padding:15px; margin-bottom:20px; font-size:16px;"></select>
-    <button class="btn-save" onclick="link()">登録を完了する</button>
+<body id="bodyTag">
+  <div id="debug-panel"></div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <p id="loadingText">読込中...</p>
+  </div>
+
+  <div id="registration-view" style="display:none; padding:20px; text-align:center;">
+    <h3 id="regTitle">初回登録</h3>
+    <p>あなたのお名前を選択してください。</p>
+    <select id="name-list" style="width:100%; padding:12px; margin:15px 0; font-size:16px;"></select>
+    <button class="btn-save" onclick="link()">登録する</button>
   </div>
 
   <div class="container" id="main-view" style="display:none;">
-    <h3 id="weekTitle" style="text-align:center; margin:10px 0;"></h3>
-    <div class="table-wrapper">
+    <h3 id="weekTitle"></h3>
+    <div class="table-wrapper" id="content-area">
       <table id="mainTable"></table>
     </div>
-    <div class="footer" id="footer-area">
-      <button class="btn-save" onclick="save()">変更を保存して閉じる</button>
+    <div id="scrollIndicator" class="scroll-indicator">▼ 下に続きがあります</div>
+    <div id="footer" class="footer-bar">
+      <button class="btn-save" onclick="saveAll()">変更を保存して閉じる</button>
     </div>
   </div>
 
-  <div id="modal" class="modal">
-    <div class="modal-content">
-      <div id="m-title" class="modal-title"></div>
-      <div id="m-body"></div>
+  <div id="commentModal" class="modal">
+    <div class="modal-box">
+      <div id="modalTitle" class="modal-title"></div>
+      <p style="font-size:11px; color:#666; margin:0 0 5px 0;">理由や備考を入力（例: 10時合流）</p>
+      <input type="text" id="modalInput" class="modal-input" placeholder="特になし">
       <div class="modal-btns">
-        <button class="btn-m" style="background:#eee" onclick="closeM()">戻る</button>
-        <button id="m-save-btn" class="btn-m" style="background:var(--main);color:white;" onclick="applyM()">反映</button>
+        <button class="modal-btn" style="background:#eee; color:#333;" onclick="closeModal()">キャンセル</button>
+        <button id="modalApplyBtn" class="modal-btn" style="background:var(--main-green); color:white;" onclick="applyComment()">決定</button>
       </div>
     </div>
   </div>
 
   <script>
-    const CONFIG = {
-      GAS_URL: "https://script.google.com/macros/s/AKfycbyK70SuUPhT2tt5htRxPlCHAySTSzT7TfPFmRg8S4vuS6HP7eM03Uw_r3u8D_nQdjSb/exec",
-      
-      LIFF_ID: "2009266487-GEiMe9Ei",
-      SIGNS: ["〇", "△", "×", "-"]
+    /**
+     * 1. 接続設定とグローバル変数
+     */
+    const SETTINGS = {
+      GAS_URL: "https://script.google.com/macros/s/AKfycbyK70SuUPhT2tt5htRxPlCHAySTSzT7TfPFmRg8S4vuS6HP7eM03Uw_r3u8D_nQdjSb/exec", 
+      LIFF_ID: "2009266487-GEiMe9Ei"
     };
 
-    let MY_UID = "", IS_VIEW = false, DATES = [], FAMILIES = [];
+    let MY_LINE_ID = "";         
+    let IS_VIEW_MODE = false;     
+    let days = [];                
+    let rawData = [];             
+    let hasChanges = false; // 【修正】配列全体を保存するためフラグに変更
+    let isSaving = false;         
 
-    async function init() {
-      const p = new URLSearchParams(location.search);
-      IS_VIEW = (p.get('mode') === 'view');
-      if (!IS_VIEW) {
-        await liff.init({ liffId: CONFIG.LIFF_ID });
-        if (!liff.isLoggedIn()) { liff.login(); return; }
-        MY_UID = (await liff.getProfile()).userId;
-      }
-      fetchData();
-    }
+    // モーダル制御用の一時変数
+    let currentEditFIdx = -1;
+    let currentEditDIdx = -1;
 
-    async function fetchData() {
+    const UI_CONFIG = {
+      signs: ["〇", "△", "×", "-"],
+      labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
+    };
+
+    // 表以外の領域でのスワイプによる画面全体のバウンス（引っ張りスクロール）を防止
+    document.addEventListener('touchmove', function(e) {
+      if (e.touches.length > 1) return; 
+      if (!e.target.closest('.table-wrapper') && !e.target.closest('.modal')) { e.preventDefault(); }
+    }, { passive: false });
+
+    /**
+     * 通信エラー対策：タイムアウト機能付きのFetch APIラッパー
+     */
+    async function fetchWithTimeout(url, options = {}, timeout = 15000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
       try {
-        const res = await fetch(`${CONFIG.GAS_URL}?uid=${MY_UID}&action=get&mode=${IS_VIEW?'view':''}`);
-        const json = await res.json();
-        if (json.status === "success") {
-          DATES = json.data.dates;
-          FAMILIES = json.data.families;
-          document.getElementById("weekTitle").innerText = json.data.weekLabel + (IS_VIEW ? " (閲覧)" : "");
-          if (IS_VIEW) document.getElementById("footer-area").style.display = "none";
-          render();
-          document.getElementById("main-view").style.display = "flex";
-        } else if (json.status === "unregistered") {
-          const sel = document.getElementById("name-list");
-          json.list.forEach(f => sel.add(new Option(f.name, f.id)));
-          document.getElementById("registration-view").style.display = "block";
-        }
-      } catch (e) { alert("通信エラー: " + e); }
-      document.getElementById("loading").style.display = "none";
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+      } catch (e) {
+        clearTimeout(id);
+        if (e.name === 'AbortError') throw new Error("通信タイムアウト");
+        throw e;
+      }
     }
 
-    function render() {
-      // 集計計算
-      const totals = DATES.map(() => ({ "〇":0, "△":0, "×":0, "-":0 }));
-      FAMILIES.forEach(f => f.statuses.forEach((s, i) => totals[i][s]++));
+    /**
+     * 2. アプリの初期化とLIFFログイン
+     */
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      IS_VIEW_MODE = (params.get('mode') === 'view'); 
+      if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
 
-      let h = `<thead><tr><th>氏名</th>`;
-      DATES.forEach((d, i) => {
-        h += `<th>${d.label}<div class="count-box">`;
-        CONFIG.SIGNS.forEach(s => h += `<div class="count-line"><span>${s}</span><span>${totals[i][s]}</span></div>`);
-        h += `</div></th>`;
-      });
-      h += `</tr></thead><tbody>`;
+      try {
+        if (!IS_VIEW_MODE) {
+          await liff.init({ liffId: SETTINGS.LIFF_ID });
+          if (!liff.isLoggedIn()) { liff.login(); return; }
+          const profile = await liff.getProfile();
+          MY_LINE_ID = profile.userId;
+        }
+        await fetchData();
+      } catch (e) {
+        document.getElementById("loading").style.display = "none";
+        console.error(e);
+        alert("初期化または通信エラーが発生しました。\n\n詳細: " + e.message);
+      }
+    }
 
-      FAMILIES.forEach((f, fi) => {
-        const isMe = f.lineIds.includes(MY_UID);
-        const rowCls = isMe ? "my-row" : "";
+    /**
+     * 3. GASからのデータ取得
+     */
+    async function fetchData(retryCount = 0) {
+      const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
+      const url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : ''}&appUrl=${appUrl}&v=${Date.now()}`;
+      
+      try {
+        const res = await fetchWithTimeout(url);
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+        const data = await res.json();
         
-        // 出欠行
-        h += `<tr class="${rowCls}"><td class="name-cell">${f.name}</td>`;
-        f.statuses.forEach((s, di) => {
-          const lock = DATES[di].isLocked;
-          const act = (!IS_VIEW && isMe && !lock) ? `onclick="toggle(${fi},${di})"` : "";
-          h += `<td class="status-cell ${lock?'locked':''}" ${act}>${s}</td>`;
-        });
-        h += "</tr>";
+        if (data.status === "error") throw new Error("GAS側エラー: " + data.message);
 
-        // コメント行
-        const hasCom = f.commentStatus.some(c => c && c.trim() !== "");
-        if ((!IS_VIEW && isMe) || hasCom) {
-          h += `<tr class="com-row ${rowCls}"><td class="name-cell com-label">└ 💬</td>`;
-          DATES.forEach((d, di) => {
-            const txt = f.commentStatus[di];
-            const lock = d.isLocked;
-            let inner = "-";
-            if (!IS_VIEW && isMe) {
-              inner = `<span class="com-icon" onclick="openEdit()">${txt?'💬':'＋'}</span>`;
-            } else if (txt) {
-              inner = `<span class="com-icon" onclick="viewCom('${f.name}','${d.label}','${txt.replace(/\n/g,'<br>')}')">💬</span>`;
-            }
-            h += `<td class="${lock?'locked':''}">${inner}</td>`;
+        if (data.data && data.data.title) {
+          document.title = data.data.title;
+        }
+
+        if (data.status === "success") {
+          if (data.data.noSchedule) {
+            document.getElementById("loading").style.display = "none";
+            document.getElementById("main-view").style.display = "flex";
+            document.getElementById("weekTitle").innerText = "(未設定)";
+            document.getElementById("content-area").innerHTML = '<div class="no-schedule-msg">現在、有効なスケジュールはありません。</div>';
+            return;
+          }
+
+          days = data.data.dates; // 【修正】オブジェクトの配列 `{label, isLocked}` に変更済
+          rawData = data.data.families;
+          document.getElementById("main-view").style.display = "flex";
+          document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
+          if (!IS_VIEW_MODE) document.getElementById("footer").style.display = "block";
+          document.getElementById("loading").style.display = "none";
+          
+          render(); 
+        } else if (data.status === "unregistered") {
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("registration-view").style.display = "block";
+          document.getElementById("regTitle").innerText = data.data.title || "父兄出欠確認アプリ";
+          
+          const select = document.getElementById("name-list");
+          data.list.forEach(item => {
+            let opt = document.createElement("option"); 
+            opt.value = item.id; 
+            opt.text = item.name; 
+            select.appendChild(opt);
           });
-          h += "</tr>";
+        }
+      } catch (e) {
+        if (retryCount < 2) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return await fetchData(retryCount + 1);
+        }
+        document.getElementById("loading").style.display = "none";
+        console.error(e);
+        alert("通信エラー、またはタイムアウトが発生しました。\n電波の良い所で再読み込みしてください。");
+      }
+    }
+  
+    /**
+     * 4. 表の描画と集計
+     */
+    function render() {
+      if (!days || days.length === 0) return;
+      
+      const totals = days.map(() => {
+        let obj = {}; 
+        UI_CONFIG.signs.forEach(s => obj[s] = 0); 
+        return obj;
+      });
+
+      rawData.forEach(f => {
+        f.statuses.forEach((s, i) => { 
+          if (totals[i].hasOwnProperty(s)) totals[i][s]++; 
+        });
+      });
+
+      let html = `<thead><tr><th class="name-col-head">団員父兄</th>`;
+      days.forEach((d, i) => {
+        let cls = (d.label.includes("日") || d.label.includes("祝")) ? "sun" : d.label.includes("土") ? "sat" : "";
+        html += `<th class="${cls}">${d.label}<div class="count-box">`;
+        UI_CONFIG.signs.forEach(s => {
+          html += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span>${totals[i][s]}</span></div>`;
+        });
+        html += `</div></th>`;
+      });
+      html += "</tr></thead><tbody>";
+
+      rawData.forEach((f, fIdx) => {
+        const isMe = (MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
+        html += `<tr class="${isMe ? 'my-row' : ''}"><td class="name-cell">${f.name}</td>`;
+        
+        f.statuses.forEach((s, dIdx) => {
+          const isLocked = days[dIdx].isLocked; // 【追加】締切判定
+          const canEdit = !IS_VIEW_MODE && isMe;
+          const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
+          const lockClass = isLocked ? "locked" : "";
+          html += `<td class="status-cell status-${s} ${lockClass}" ${clickAttr}>${s}</td>`;
+        });
+        html += "</tr>";
+
+        // 【追加】②-2: コメント行の描画
+        const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
+        if (isMe || hasComment) {
+          html += `<tr class="com-row ${isMe ? 'my-row' : ''}"><td class="name-cell com-label">└ 💬備考</td>`;
+          f.commentStatus.forEach((c, dIdx) => {
+            const isLocked = days[dIdx].isLocked;
+            const lockClass = isLocked ? "locked" : "";
+            
+            if (isMe && !IS_VIEW_MODE) {
+              const icon = c ? '💬' : '＋';
+              html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
+            } else {
+              const displayTxt = c ? `<span class="com-text" onclick="viewModal('${f.name}', '${days[dIdx].label}', '${c}')">💬</span>` : '-';
+              html += `<td class="${lockClass}">${displayTxt}</td>`;
+            }
+          });
+          html += "</tr>";
         }
       });
-      document.getElementById("mainTable").innerHTML = h + "</tbody>";
+      
+      document.getElementById("mainTable").innerHTML = html + "</tbody>";
+      setTimeout(checkScroll, 300);
     }
 
-    function toggle(fi, di) {
-      const cur = FAMILIES[fi].statuses[di];
-      FAMILIES[fi].statuses[di] = CONFIG.SIGNS[(CONFIG.SIGNS.indexOf(cur)+1)%CONFIG.SIGNS.length];
+    /**
+     * 5. セルタップ時のステータス切り替え
+     */
+    function toggle(fIdx, dIdx) {
+      if (days[dIdx].isLocked) {
+        alert("回答期限（前日の21時）を過ぎているため変更できません。");
+        return;
+      }
+      const signs = UI_CONFIG.signs;
+      const current = rawData[fIdx].statuses[dIdx];
+      rawData[fIdx].statuses[dIdx] = signs[(signs.indexOf(current) + 1) % signs.length];
+      hasChanges = true; 
+      render(); 
+    }
+
+    /**
+     * 【追加】②-2: モーダル制御ロジック
+     */
+    function openModal(fIdx, dIdx) {
+      if (days[dIdx].isLocked) {
+        alert("回答期限（前日の21時）を過ぎているため変更できません。");
+        return;
+      }
+      currentEditFIdx = fIdx;
+      currentEditDIdx = dIdx;
+      document.getElementById("modalTitle").innerText = days[dIdx].label + " の備考";
+      document.getElementById("modalInput").value = rawData[fIdx].commentStatus[dIdx] || "";
+      document.getElementById("modalInput").readOnly = false;
+      document.getElementById("modalApplyBtn").style.display = "block";
+      document.getElementById("commentModal").style.display = "flex";
+      setTimeout(() => document.getElementById("modalInput").focus(), 100);
+    }
+
+    function viewModal(name, dateLabel, text) {
+      document.getElementById("modalTitle").innerText = `${name} (${dateLabel})`;
+      document.getElementById("modalInput").value = text;
+      document.getElementById("modalInput").readOnly = true;
+      document.getElementById("modalApplyBtn").style.display = "none";
+      document.getElementById("commentModal").style.display = "flex";
+    }
+
+    function applyComment() {
+      if (currentEditFIdx === -1) return;
+      const val = document.getElementById("modalInput").value;
+      rawData[currentEditFIdx].commentStatus[currentEditDIdx] = val;
+      hasChanges = true;
+      closeModal();
       render();
     }
 
-    function openEdit() {
-      const me = FAMILIES.find(f => f.lineIds.includes(MY_UID));
-      document.getElementById("m-title").innerText = "コメント編集";
-      document.getElementById("m-save-btn").style.display = "block";
-      let h = "";
-      DATES.forEach((d, i) => {
-        h += `<div class="edit-item"><div class="edit-label">${d.label}</div>
-              <input id="edit-${i}" class="edit-input" value="${me.commentStatus[i]||''}" placeholder="特記事項なし"></div>`;
-      });
-      document.getElementById("m-body").innerHTML = h;
-      document.getElementById("modal").style.display = "flex";
+    function closeModal() {
+      document.getElementById("commentModal").style.display = "none";
+      currentEditFIdx = -1;
+      currentEditDIdx = -1;
     }
 
-    function viewCom(n, d, t) {
-      document.getElementById("m-title").innerText = `${n} (${d})`;
-      document.getElementById("m-body").innerHTML = `<div style="padding:10px;background:#f9f9f9;border-radius:5px;">${t}</div>`;
-      document.getElementById("m-save-btn").style.display = "none";
-      document.getElementById("modal").style.display = "flex";
-    }
+    /**
+     * 6. データの保存処理
+     * 【修正】全日付（出欠とコメント両方）の配列を送信する安全な方式に変更
+     */
+    async function saveAll() {
+      if (!hasChanges) { liff.closeWindow(); return; }
+      if (isSaving) return; 
 
-    function applyM() {
-      const me = FAMILIES.find(f => f.lineIds.includes(MY_UID));
-      DATES.forEach((_, i) => me.commentStatus[i] = document.getElementById(`edit-${i}`).value);
-      closeM(); render();
-    }
+      isSaving = true;
+      const loader = document.getElementById("loading");
+      document.getElementById("loadingText").innerText = "保存中..."; 
+      loader.style.display = "flex";
 
-    function closeM() { document.getElementById("modal").style.display = "none"; }
+      const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
+      
+      const payload = days.map((d, i) => ({
+        familyId: myData.id,
+        dateLabel: d.label,
+        status: myData.statuses[i],
+        comment: myData.commentStatus[i] || ""
+      }));
 
-    async function save() {
-      document.getElementById("loading").style.display = "flex";
-      const me = FAMILIES.find(f => f.lineIds.includes(MY_UID));
-      const payload = {
-        att: DATES.map((d, i) => ({ dateLabel: d.label, status: me.statuses[i] })),
-        com: DATES.map((d, i) => ({ dateLabel: d.label, text: me.commentStatus[i] }))
-      };
       try {
-        const url = `${CONFIG.GAS_URL}?action=update_all&uid=${MY_UID}&familyId=${me.id}&payload=${encodeURIComponent(JSON.stringify(payload))}`;
-        await fetch(url);
-        liff.closeWindow();
-      } catch (e) { alert("保存失敗: " + e); document.getElementById("loading").style.display = "none"; }
+        const res = await fetchWithTimeout(`${SETTINGS.GAS_URL}?action=update_all&payload=${encodeURIComponent(JSON.stringify(payload))}`);
+        if (!res.ok) throw new Error("HTTP Error"); 
+        setTimeout(() => { liff.closeWindow(); }, 500);
+      } catch (e) { 
+        alert("保存エラーが発生しました。通信環境を確認して再度お試しください。"); 
+        loader.style.display = "none"; 
+        isSaving = false;
+      }
     }
 
+    /**
+     * 7. 初回アクセス時のLINE ID紐付け登録
+     */
     async function link() {
-      const fid = document.getElementById("name-list").value;
-      if (!fid) return;
+      const sid = document.getElementById("name-list").value;
       document.getElementById("loading").style.display = "flex";
-      await fetch(`${CONFIG.GAS_URL}?uid=${MY_UID}&action=link&family_id=${fid}`);
-      location.reload();
+      try {
+        await fetchWithTimeout(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}`);
+        window.location.reload(); 
+      } catch (e) { 
+        alert("登録エラーが発生しました。"); 
+        document.getElementById("loading").style.display = "none";
+      }
     }
+
+    /**
+     * 8. スクロール判定とインジケーターの表示制御
+     */
+    function checkScroll() {
+      const area = document.getElementById("content-area");
+      const indicator = document.getElementById("scrollIndicator");
+      const debugPanel = document.getElementById("debug-panel");
+      
+      if (!area || !indicator) return;
+
+      const scrollH = Math.round(area.scrollHeight);
+      const clientH = Math.round(area.clientHeight);
+      const scrollT = Math.round(area.scrollTop);
+
+      const canScroll = scrollH > (clientH + 3);
+      const isBottom = (scrollH - scrollT) <= (clientH + 10);
+
+      if (canScroll && !isBottom) {
+        indicator.style.display = "block";
+      } else {
+        indicator.style.display = "none";
+      }
+
+      const showDebug = false; 
+      if (showDebug) {
+        debugPanel.style.display = "block";
+        debugPanel.innerHTML = `全体高さ(sH): ${scrollH}<br>表示枠(cH): ${clientH}<br>スクロール量(sT): ${scrollT}<br>はみ出し有無: ${canScroll}`;
+      }
+    }
+
+    document.getElementById("content-area").addEventListener("scroll", checkScroll);
+    window.addEventListener("resize", checkScroll);
 
     window.onload = init;
   </script>
