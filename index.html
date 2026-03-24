@@ -54,6 +54,10 @@
     .count-row { display: flex; justify-content: space-between; }
 
     td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
+    
+    /* 【追加】編集モード時の「他人の行」の高さを閲覧モードと同じにする */
+    .other-row td { height: 34px !important; }
+
     .name-cell { 
       width: var(--name-col-width); padding: 0 2px; font-weight: bold; font-size: 12px; 
       text-align: left; background: #fafafa; border-right: 2px solid var(--main-green); word-break: break-all; 
@@ -71,9 +75,9 @@
     .locked { background-color: #f2f2f2 !important; color: #bbb !important; cursor: not-allowed; }
 
     /* コメント行のスタイル */
-    .com-row { height: 32px; background: #fff; }
-    .com-label { font-size: 10px; color: #888; text-align: right; padding-right: 8px; border-right: 2px solid #ccc; font-weight: normal; }
-    .com-icon { font-size: 16px; cursor: pointer; display: block; width: 100%; height: 100%; line-height: 32px; }
+    .com-row { height: auto; background: #fff; } /* 改行に対応するため auto に変更 */
+    .com-label { font-size: 10px; color: #888; text-align: right; padding-right: 8px; border-right: 2px solid #ccc; font-weight: normal; padding-bottom: 4px; }
+    .com-icon { font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; min-height: 32px; }
     .com-text { font-size: 10px; color: #666; cursor: pointer; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40px; }
 
     /* ==========================================
@@ -99,12 +103,6 @@
     @keyframes bounce { 0%, 100% { bottom: 75px; } 50% { bottom: 65px; } }
     .view-mode .scroll-indicator { bottom: 20px; }
 
-    #debug-panel {
-      position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8);
-      color: #0f0; padding: 5px; font-size: 11px; z-index: 10000;
-      pointer-events: none; border-radius: 4px; display: none; 
-    }
-
     /* コメント用モーダル */
     .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:2000; }
     .modal-box { background:white; width:85%; max-width:400px; border-radius:8px; padding:20px; box-sizing:border-box; }
@@ -116,7 +114,6 @@
 </head>
 
 <body id="bodyTag">
-  <div id="debug-panel"></div>
 
   <div id="loading">
     <div class="spinner"></div>
@@ -169,7 +166,6 @@
     let hasChanges = false; 
     let isSaving = false;         
 
-    // モーダル制御用の一時変数
     let currentEditFIdx = -1;
     let currentEditDIdx = -1;
 
@@ -178,15 +174,11 @@
       labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
     };
 
-    // 表以外の領域でのスワイプによる画面全体のバウンス（引っ張りスクロール）を防止
     document.addEventListener('touchmove', function(e) {
       if (e.touches.length > 1) return; 
       if (!e.target.closest('.table-wrapper') && !e.target.closest('.modal')) { e.preventDefault(); }
     }, { passive: false });
 
-    /**
-     * 通信エラー対策：タイムアウト機能付きのFetch APIラッパー
-     */
     async function fetchWithTimeout(url, options = {}, timeout = 15000) {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeout);
@@ -202,7 +194,7 @@
     }
 
     /**
-     * 2. アプリの初期化とLIFFログイン
+     * 2. アプリの初期化
      */
     async function init() {
       const params = new URLSearchParams(window.location.search);
@@ -284,7 +276,7 @@
     }
   
     /**
-     * 4. 表の描画と集計
+     * 4. 表の描画
      */
     function render() {
       if (!days || days.length === 0) return;
@@ -314,7 +306,9 @@
 
       rawData.forEach((f, fIdx) => {
         const isMe = (MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
-        html += `<tr class="${isMe ? 'my-row' : ''}"><td class="name-cell">${f.name}</td>`;
+        // 【追加】自分（編集行）か、他人（閲覧行）かのクラスを付与
+        const rowClass = isMe ? 'my-row' : 'other-row';
+        html += `<tr class="${rowClass}"><td class="name-cell">${f.name}</td>`;
         
         f.statuses.forEach((s, dIdx) => {
           const isLocked = days[dIdx].isLocked; 
@@ -325,11 +319,10 @@
         });
         html += "</tr>";
 
-        // コメント行の描画
         const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
         if (isMe || hasComment) {
-          // 【変更】└ 💬備考 → └ 💬コメント に統一
-          html += `<tr class="com-row ${isMe ? 'my-row' : ''}"><td class="name-cell com-label">└ 💬コメント</td>`;
+          // 【変更】コメント前に改行を入れる (<br>を追加)
+          html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label"><br>└ 💬コメント</td>`;
           f.commentStatus.forEach((c, dIdx) => {
             const isLocked = days[dIdx].isLocked;
             const lockClass = isLocked ? "locked" : "";
@@ -339,7 +332,7 @@
               html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
             } else {
               const displayTxt = c ? `<span class="com-text" onclick="viewModal('${f.name}', '${days[dIdx].label}', '${c}')">💬</span>` : '-';
-              html += `<td class="${lockClass}">${displayTxt}</td>`;
+              html += `<td class="${lockClass}"><span class="com-icon">${displayTxt}</span></td>`;
             }
           });
           html += "</tr>";
@@ -365,9 +358,6 @@
       render(); 
     }
 
-    /**
-     * モーダル制御ロジック
-     */
     function openModal(fIdx, dIdx) {
       if (days[dIdx].isLocked) {
         alert("回答期限を過ぎているため変更できません。");
@@ -376,10 +366,9 @@
       currentEditFIdx = fIdx;
       currentEditDIdx = dIdx;
       
-      // 【変更】編集モード時のポップアップ文言の差し替え
       document.getElementById("modalTitle").innerText = days[dIdx].label + " のコメント";
       document.getElementById("modalDesc").innerText = "コメントを入力 (例: 17:30から参加)";
-      document.getElementById("modalDesc").style.display = "block"; // 説明文を表示する
+      document.getElementById("modalDesc").style.display = "block";
       
       document.getElementById("modalInput").value = rawData[fIdx].commentStatus[dIdx] || "";
       document.getElementById("modalInput").readOnly = false;
@@ -389,9 +378,8 @@
     }
 
     function viewModal(name, dateLabel, text) {
-      // 【変更】閲覧モード時のポップアップ文言の差し替えと説明文削除（非表示）
       document.getElementById("modalTitle").innerText = `${name} (${dateLabel}) のコメント`;
-      document.getElementById("modalDesc").style.display = "none"; // 説明文を非表示にする
+      document.getElementById("modalDesc").style.display = "none";
       
       document.getElementById("modalInput").value = text;
       document.getElementById("modalInput").readOnly = true;
@@ -446,9 +434,6 @@
       }
     }
 
-    /**
-     * 7. 初回アクセス時のLINE ID紐付け登録
-     */
     async function link() {
       const sid = document.getElementById("name-list").value;
       document.getElementById("loading").style.display = "flex";
@@ -461,13 +446,9 @@
       }
     }
 
-    /**
-     * 8. スクロール判定とインジケーターの表示制御
-     */
     function checkScroll() {
       const area = document.getElementById("content-area");
       const indicator = document.getElementById("scrollIndicator");
-      const debugPanel = document.getElementById("debug-panel");
       
       if (!area || !indicator) return;
 
@@ -482,12 +463,6 @@
         indicator.style.display = "block";
       } else {
         indicator.style.display = "none";
-      }
-
-      const showDebug = false; 
-      if (showDebug) {
-        debugPanel.style.display = "block";
-        debugPanel.innerHTML = `全体高さ(sH): ${scrollH}<br>表示枠(cH): ${clientH}<br>スクロール量(sT): ${scrollT}<br>はみ出し有無: ${canScroll}`;
       }
     }
 
