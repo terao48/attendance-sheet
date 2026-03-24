@@ -38,7 +38,7 @@
      * 表 (テーブル) のデザイン
      * ========================================== */
     .table-wrapper { 
-      flex: 1; overflow-y: auto; overflow-x: auto; /* 横幅はみ出し許可に変更 */
+      flex: 1; overflow-y: auto; overflow-x: auto; 
       border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
       margin-bottom: 65px; position: relative; 
     }
@@ -57,7 +57,7 @@
     .name-cell { 
       width: var(--name-col-width); padding: 0 2px; font-weight: bold; font-size: 12px; 
       text-align: left; background: #fafafa; border-right: 2px solid var(--main-green); word-break: break-all; 
-      position: sticky; left: 0; z-index: 5; /* 氏名固定化 */
+      position: sticky; left: 0; z-index: 5; 
     }
     .my-row { background-color: var(--my-row-bg) !important; } 
     .my-row .name-cell { background-color: var(--my-row-bg) !important; } 
@@ -68,10 +68,9 @@
     .status-× { color: #7f8c8d; font-weight: bold; }
     .status-- { color: #ccc; }
 
-    /* 【追加】②-1: 締切後のスタイル */
     .locked { background-color: #f2f2f2 !important; color: #bbb !important; cursor: not-allowed; }
 
-    /* 【追加】②-2: コメント行のスタイル */
+    /* コメント行のスタイル */
     .com-row { height: 32px; background: #fff; }
     .com-label { font-size: 10px; color: #888; text-align: right; padding-right: 8px; border-right: 2px solid #ccc; font-weight: normal; }
     .com-icon { font-size: 16px; cursor: pointer; display: block; width: 100%; height: 100%; line-height: 32px; }
@@ -106,7 +105,7 @@
       pointer-events: none; border-radius: 4px; display: none; 
     }
 
-    /* 【追加】②-2: コメント用モーダル */
+    /* コメント用モーダル */
     .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:2000; }
     .modal-box { background:white; width:85%; max-width:400px; border-radius:8px; padding:20px; box-sizing:border-box; }
     .modal-title { font-weight:bold; margin-bottom:10px; font-size:14px; border-bottom: 2px solid var(--main-green); padding-bottom: 5px; }
@@ -145,7 +144,7 @@
   <div id="commentModal" class="modal">
     <div class="modal-box">
       <div id="modalTitle" class="modal-title"></div>
-      <p style="font-size:11px; color:#666; margin:0 0 5px 0;">理由や備考を入力（例: 10時合流）</p>
+      <p id="modalDesc" style="font-size:11px; color:#666; margin:0 0 5px 0;"></p>
       <input type="text" id="modalInput" class="modal-input" placeholder="特になし">
       <div class="modal-btns">
         <button class="modal-btn" style="background:#eee; color:#333;" onclick="closeModal()">キャンセル</button>
@@ -167,7 +166,7 @@
     let IS_VIEW_MODE = false;     
     let days = [];                
     let rawData = [];             
-    let hasChanges = false; // 【修正】配列全体を保存するためフラグに変更
+    let hasChanges = false; 
     let isSaving = false;         
 
     // モーダル制御用の一時変数
@@ -252,7 +251,7 @@
             return;
           }
 
-          days = data.data.dates; // 【修正】オブジェクトの配列 `{label, isLocked}` に変更済
+          days = data.data.dates; 
           rawData = data.data.families;
           document.getElementById("main-view").style.display = "flex";
           document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
@@ -318,7 +317,7 @@
         html += `<tr class="${isMe ? 'my-row' : ''}"><td class="name-cell">${f.name}</td>`;
         
         f.statuses.forEach((s, dIdx) => {
-          const isLocked = days[dIdx].isLocked; // 【追加】締切判定
+          const isLocked = days[dIdx].isLocked; 
           const canEdit = !IS_VIEW_MODE && isMe;
           const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
           const lockClass = isLocked ? "locked" : "";
@@ -326,10 +325,11 @@
         });
         html += "</tr>";
 
-        // 【追加】②-2: コメント行の描画
+        // コメント行の描画
         const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
         if (isMe || hasComment) {
-          html += `<tr class="com-row ${isMe ? 'my-row' : ''}"><td class="name-cell com-label">└ 💬備考</td>`;
+          // 【変更】└ 💬備考 → └ 💬コメント に統一
+          html += `<tr class="com-row ${isMe ? 'my-row' : ''}"><td class="name-cell com-label">└ 💬コメント</td>`;
           f.commentStatus.forEach((c, dIdx) => {
             const isLocked = days[dIdx].isLocked;
             const lockClass = isLocked ? "locked" : "";
@@ -355,7 +355,7 @@
      */
     function toggle(fIdx, dIdx) {
       if (days[dIdx].isLocked) {
-        alert("回答期限（前日の21時）を過ぎているため変更できません。");
+        alert("回答期限を過ぎているため変更できません。");
         return;
       }
       const signs = UI_CONFIG.signs;
@@ -366,16 +366,21 @@
     }
 
     /**
-     * 【追加】②-2: モーダル制御ロジック
+     * モーダル制御ロジック
      */
     function openModal(fIdx, dIdx) {
       if (days[dIdx].isLocked) {
-        alert("回答期限（前日の21時）を過ぎているため変更できません。");
+        alert("回答期限を過ぎているため変更できません。");
         return;
       }
       currentEditFIdx = fIdx;
       currentEditDIdx = dIdx;
-      document.getElementById("modalTitle").innerText = days[dIdx].label + " の備考";
+      
+      // 【変更】編集モード時のポップアップ文言の差し替え
+      document.getElementById("modalTitle").innerText = days[dIdx].label + " のコメント";
+      document.getElementById("modalDesc").innerText = "コメントを入力 (例: 17:30から参加)";
+      document.getElementById("modalDesc").style.display = "block"; // 説明文を表示する
+      
       document.getElementById("modalInput").value = rawData[fIdx].commentStatus[dIdx] || "";
       document.getElementById("modalInput").readOnly = false;
       document.getElementById("modalApplyBtn").style.display = "block";
@@ -384,7 +389,10 @@
     }
 
     function viewModal(name, dateLabel, text) {
-      document.getElementById("modalTitle").innerText = `${name} (${dateLabel})`;
+      // 【変更】閲覧モード時のポップアップ文言の差し替えと説明文削除（非表示）
+      document.getElementById("modalTitle").innerText = `${name} (${dateLabel}) のコメント`;
+      document.getElementById("modalDesc").style.display = "none"; // 説明文を非表示にする
+      
       document.getElementById("modalInput").value = text;
       document.getElementById("modalInput").readOnly = true;
       document.getElementById("modalApplyBtn").style.display = "none";
@@ -408,7 +416,6 @@
 
     /**
      * 6. データの保存処理
-     * 【修正】全日付（出欠とコメント両方）の配列を送信する安全な方式に変更
      */
     async function saveAll() {
       if (!hasChanges) { liff.closeWindow(); return; }
