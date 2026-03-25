@@ -258,7 +258,7 @@
             document.getElementById("loading").style.display = "none";
             document.getElementById("main-view").style.display = "flex";
             document.getElementById("weekTitle").innerText = "(未設定)";
-            document.getElementById("content-area").innerHTML = '<div class="no-schedule-msg">現在、有効なスケジュールはありません。</div>';
+            document.getElementById("content-area").innerHTML = '<div class="no-schedule-msg">現在、有効なスケジュールはありません</div>';
             return;
           }
 
@@ -290,7 +290,7 @@
         }
         document.getElementById("loading").style.display = "none";
         console.error(e);
-        alert("通信エラー、またはタイムアウトが発生しました。\n電波の良い所で再読み込みしてください。");
+        alert("通信エラー、またはタイムアウトが発生しました\n電波の良い所で再読み込みしてください");
       }
     }
   
@@ -370,7 +370,7 @@
      */
     function toggle(fIdx, dIdx) {
       if (days[dIdx].isLocked) {
-        alert("回答期限を過ぎているため変更できません。");
+        alert("回答期限を過ぎているため変更できません");
         return;
       }
       const signs = UI_CONFIG.signs;
@@ -387,7 +387,7 @@
      */
     function openModal(fIdx, dIdx) {
       if (days[dIdx].isLocked) {
-        alert("回答期限を過ぎているため変更できません。");
+        alert("回答期限を過ぎているため変更できません");
         return;
       }
       currentEditFIdx = fIdx;
@@ -468,7 +468,7 @@
         if (!res.ok) throw new Error("HTTP Error"); 
         setTimeout(() => { liff.closeWindow(); }, 500);
       } catch (e) { 
-        alert("保存エラーが発生しました。通信環境を確認して再度お試しください。"); 
+        alert("保存エラーが発生しました。通信環境を確認して再度お試しください"); 
         loader.style.display = "none"; 
         isSaving = false;
       }
@@ -484,7 +484,7 @@
         await fetchWithTimeout(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}`);
         window.location.reload(); 
       } catch (e) { 
-        alert("登録エラーが発生しました。"); 
+        alert("登録エラーが発生しました"); 
         document.getElementById("loading").style.display = "none";
       }
     }
