@@ -55,7 +55,6 @@
 
     td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
     
-    /* 【追加】編集モード時の「他人の行」の高さを閲覧モードと同じにする */
     .other-row td { height: 34px !important; }
 
     .name-cell { 
@@ -75,8 +74,8 @@
     .locked { background-color: #f2f2f2 !important; color: #bbb !important; cursor: not-allowed; }
 
     /* コメント行のスタイル */
-    .com-row { height: auto; background: #fff; } /* 改行に対応するため auto に変更 */
-    .com-label { font-size: 10px; color: #888; text-align: right; padding-right: 8px; border-right: 2px solid #ccc; font-weight: normal; padding-bottom: 4px; }
+    .com-row { height: auto; background: #fff; }
+    .com-label { font-size: 10px; color: #888; text-align: right; padding-right: 8px; border-right: 2px solid #ccc; font-weight: normal; padding-bottom: 4px; line-height: 1.3; }
     .com-icon { font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; min-height: 32px; }
     .com-text { font-size: 10px; color: #666; cursor: pointer; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40px; }
 
@@ -306,7 +305,6 @@
 
       rawData.forEach((f, fIdx) => {
         const isMe = (MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
-        // 【追加】自分（編集行）か、他人（閲覧行）かのクラスを付与
         const rowClass = isMe ? 'my-row' : 'other-row';
         html += `<tr class="${rowClass}"><td class="name-cell">${f.name}</td>`;
         
@@ -321,8 +319,8 @@
 
         const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
         if (isMe || hasComment) {
-          // 【変更】コメント前に改行を入れる (<br>を追加)
-          html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label"><br>└ 💬コメント</td>`;
+          // 【変更】コメント改行位置の変更：┗記号の前は削除、吹き出しマークと”コメント”の間に入れる
+          html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label">┗ 💬<br>コメント</td>`;
           f.commentStatus.forEach((c, dIdx) => {
             const isLocked = days[dIdx].isLocked;
             const lockClass = isLocked ? "locked" : "";
