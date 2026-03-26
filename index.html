@@ -160,7 +160,7 @@
      * アプリ内で共有される状態（State）や定数を管理します
      */
     const SETTINGS = {
-      GAS_URL: "https://script.google.com/macros/s/AKfycbyK70SuUPhT2tt5htRxPlCHAySTSzT7TfPFmRg8S4vuS6HP7eM03Uw_r3u8D_nQdjSb/exec", // デプロイしたGASのURL
+      GAS_URL: "★あなたのGASのウェブアプリURL★", // デプロイしたGASのURL
       LIFF_ID: "2009266487-GEiMe9Ei"                // LINE Developersで取得したLIFF ID
     };
 
@@ -372,7 +372,7 @@
      */
     function toggle(fIdx, dIdx) {
       if (days[dIdx].isLocked) {
-        alert("回答期限:前日" + DEADLINE_HOUR + "時を過ぎているため変更できません");
+        alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません");
         return;
       }
       const signs = UI_CONFIG.signs;
@@ -389,7 +389,7 @@
      */
     function openModal(fIdx, dIdx) {
       if (days[dIdx].isLocked) {
-        alert("回答期限:前日" + DEADLINE_HOUR + "時を過ぎているため変更できません");
+        alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません");
         return;
       }
       currentEditFIdx = fIdx;
@@ -470,7 +470,7 @@
         if (!res.ok) throw new Error("HTTP Error"); 
         setTimeout(() => { liff.closeWindow(); }, 500);
       } catch (e) { 
-        alert("保存エラーが発生しました 通信環境を確認して再度お試しください"); 
+        alert("保存エラーが発生しました\n\n通信環境を確認して再度お試しください"); 
         loader.style.display = "none"; 
         isSaving = false;
       }
