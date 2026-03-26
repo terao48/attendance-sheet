@@ -8,7 +8,7 @@
   
   <style>
     /* ==========================================
-     * CSS変数の定義と基本レイアウト (OKコード7維持)
+     * CSS変数の定義と基本レイアウト
      * ========================================== */
     :root {
       --main-green: #27ae60;      
@@ -74,14 +74,12 @@
     .locked { background-color: #f2f2f2 !important; color: #bbb !important; cursor: not-allowed; }
 
     /* コメント行のスタイル */
-    /* 【変更】コメント行の高さを閲覧モード(34px)に統一 */
     .com-row td { height: 34px !important; }
     .com-row { background: #fff; }
     
-    /* 【変更】コメントラベル（名前列）のレイアウト調整 */
     .com-label { font-size: 10px; color: #888; padding: 2px 6px; border-right: 2px solid #ccc; font-weight: normal; line-height: 1.2; box-sizing: border-box; }
-    .com-label-top { text-align: left; display: block; margin-bottom: 2px; } /* 左寄せ用 */
-    .com-label-bottom { text-align: right; display: block; } /* 右寄せ用 */
+    .com-label-top { text-align: left; display: block; margin-bottom: 2px; } 
+    .com-label-bottom { text-align: right; display: block; } 
     
     .com-icon { font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
     .com-text { font-size: 10px; color: #666; cursor: pointer; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40px; }
@@ -128,7 +126,7 @@
 
   <div id="registration-view" style="display:none; padding:20px; text-align:center;">
     <h3 id="regTitle">初回登録</h3>
-    <p>あなたのお名前を選択してください。</p>
+    <p>あなたのお名前を選択してください</p>
     <select id="name-list" style="width:100%; padding:12px; margin:15px 0; font-size:16px;"></select>
     <button class="btn-save" onclick="link()">登録する</button>
   </div>
@@ -159,7 +157,7 @@
   <script>
     /**
      * 1. 接続設定とグローバル変数
-     * アプリ内で共有される状態（State）や定数を管理します。
+     * アプリ内で共有される状態（State）や定数を管理します
      */
     const SETTINGS = {
       GAS_URL: "https://script.google.com/macros/s/AKfycbyK70SuUPhT2tt5htRxPlCHAySTSzT7TfPFmRg8S4vuS6HP7eM03Uw_r3u8D_nQdjSb/exec", // デプロイしたGASのURL
@@ -168,6 +166,7 @@
 
     let MY_LINE_ID = "";          // ログインユーザーのLINE ID
     let IS_VIEW_MODE = false;     // 現在の画面が「閲覧モード」かどうか
+    let DEADLINE_HOUR = 23;       // 回答期限時刻（GASから取得して上書きされる）
     let days = [];                // 画面に表示する日付情報の配列
     let rawData = [];             // サーバーから取得した家族一覧とステータスの元データ
     let hasChanges = false;       // ユーザーが画面上で未保存の変更を行ったかどうかのフラグ
@@ -189,8 +188,8 @@
 
     /**
      * タイムアウト付きのFetch関数
-     * ネットワークが不安定な場合に無限に待機するのを防ぐためのラッパー関数です。
-     * * @param {string} url - リクエスト先のURL
+     * ネットワークが不安定な場合に無限に待機するのを防ぐためのラッパー関数です
+     * @param {string} url - リクエスト先のURL
      * @param {Object} options - fetchのオプション
      * @param {number} timeout - タイムアウトまでのミリ秒 (デフォルト15秒)
      * @returns {Promise<Response>} HTTPレスポンス
@@ -211,7 +210,7 @@
 
     /**
      * 2. アプリの初期化
-     * 画面ロード時に実行され、LIFFの初期化およびユーザー情報の取得を行います。
+     * 画面ロード時に実行され、LIFFの初期化およびユーザー情報の取得を行います
      */
     async function init() {
       const params = new URLSearchParams(window.location.search);
@@ -229,14 +228,14 @@
       } catch (e) {
         document.getElementById("loading").style.display = "none";
         console.error(e);
-        alert("初期化または通信エラーが発生しました。\n\n詳細: " + e.message);
+        alert("初期化または通信エラーが発生しました\n\n詳細: " + e.message);
       }
     }
 
     /**
      * 3. GASからのデータ取得
-     * GASのdoGet関数を呼び出し、スプレッドシートから最新の出欠データを取得します。
-     * * @param {number} retryCount - 通信失敗時の再試行回数
+     * GASのdoGet関数を呼び出し、スプレッドシートから最新の出欠データを取得します
+     * @param {number} retryCount - 通信失敗時の再試行回数
      */
     async function fetchData(retryCount = 0) {
       const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
@@ -260,6 +259,10 @@
             document.getElementById("weekTitle").innerText = "(未設定)";
             document.getElementById("content-area").innerHTML = '<div class="no-schedule-msg">現在、有効なスケジュールはありません</div>';
             return;
+          }
+
+          if (data.data.deadlineHour !== undefined) {
+            DEADLINE_HOUR = data.data.deadlineHour;
           }
 
           days = data.data.dates; 
@@ -296,7 +299,7 @@
   
     /**
      * 4. 表の描画
-     * 取得した rawData を元に、HTMLのテーブル構造を動的に生成しDOMへ挿入します。
+     * 取得した rawData を元に、HTMLのテーブル構造を動的に生成しDOMへ挿入します
      */
     function render() {
       if (!days || days.length === 0) return;
@@ -340,7 +343,6 @@
 
         const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
         if (isMe || hasComment) {
-          // 【変更】コメント改行位置の変更：┗記号と吹き出しマークは左寄せ、コメントは右寄せ
           html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label"><span class="com-label-top">┗ 💬</span><span class="com-label-bottom">コメント</span></td>`;
           f.commentStatus.forEach((c, dIdx) => {
             const isLocked = days[dIdx].isLocked;
@@ -364,13 +366,13 @@
 
     /**
      * 5. セルタップ時のステータス切り替え
-     * 編集モード時に自身の行のセルをタップした際、ステータス（〇/△/×/-）を順番に切り替えます。
-     * * @param {number} fIdx - 家族のインデックス（rawData内の位置）
+     * 編集モード時に自身の行のセルをタップした際、ステータス（〇/△/×/-）を順番に切り替えます
+     * @param {number} fIdx - 家族のインデックス（rawData内の位置）
      * @param {number} dIdx - 日付のインデックス（days内の位置）
      */
     function toggle(fIdx, dIdx) {
       if (days[dIdx].isLocked) {
-        alert("回答期限を過ぎているため変更できません");
+        alert("回答期限:前日" + DEADLINE_HOUR + "時を過ぎているため変更できません");
         return;
       }
       const signs = UI_CONFIG.signs;
@@ -387,7 +389,7 @@
      */
     function openModal(fIdx, dIdx) {
       if (days[dIdx].isLocked) {
-        alert("回答期限を過ぎているため変更できません");
+        alert("回答期限:前日" + DEADLINE_HOUR + "時を過ぎているため変更できません");
         return;
       }
       currentEditFIdx = fIdx;
@@ -411,7 +413,7 @@
      * @param {string} text - コメント内容
      */
     function viewModal(name, dateLabel, text) {
-      document.getElementById("modalTitle").innerText = `${name} (${dateLabel}) のコメント`;
+      document.getElementById("modalTitle").innerText = `${name} ${dateLabel} のコメント`;
       document.getElementById("modalDesc").style.display = "none";
       
       document.getElementById("modalInput").value = text;
@@ -443,7 +445,7 @@
 
     /**
      * 6. データの保存処理
-     * ローカルで変更された自分自身の出欠データ・コメントをまとめてGASへ送信し、スプレッドシートに保存します。
+     * ローカルで変更された自分自身の出欠データ・コメントをまとめてGASへ送信し、スプレッドシートに保存します
      */
     async function saveAll() {
       if (!hasChanges) { liff.closeWindow(); return; }
@@ -468,7 +470,7 @@
         if (!res.ok) throw new Error("HTTP Error"); 
         setTimeout(() => { liff.closeWindow(); }, 500);
       } catch (e) { 
-        alert("保存エラーが発生しました。通信環境を確認して再度お試しください"); 
+        alert("保存エラーが発生しました 通信環境を確認して再度お試しください"); 
         loader.style.display = "none"; 
         isSaving = false;
       }
