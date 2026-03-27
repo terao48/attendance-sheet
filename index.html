@@ -131,12 +131,6 @@
     <button class="btn-save" onclick="link()">登録する</button>
   </div>
 
-  <div id="limit-view" style="display:none; padding:40px 20px; text-align:center;">
-    <h3 id="limitTitle" style="color:var(--sun-red); margin-bottom:20px;">登録枠の上限到達</h3>
-    <p style="font-size:14px; color:#555; line-height:1.6;">現在、すべての団員でLINE IDの<br>登録枠が上限に達しています。</p>
-    <p style="font-size:14px; color:#555; line-height:1.6; margin-top:15px;">新規の登録を行うことができないため、<br>枠の空き状況について管理者へ<br>ご確認をお願いいたします。</p>
-  </div>
-
   <div class="container" id="main-view" style="display:none;">
     <h3 id="weekTitle"></h3>
     <div class="table-wrapper" id="content-area">
@@ -282,7 +276,7 @@
         } else if (data.status === "unregistered") {
           document.getElementById("loading").style.display = "none";
           document.getElementById("registration-view").style.display = "block";
-          document.getElementById("regTitle").innerText = data.title || "父兄出欠確認アプリ";
+          document.getElementById("regTitle").innerText = data.data.title || "父兄出欠確認アプリ";
           
           const select = document.getElementById("name-list");
           data.list.forEach(item => {
@@ -291,13 +285,6 @@
             opt.text = item.name; 
             select.appendChild(opt);
           });
-        } else if (data.status === "limit_reached") {
-          // ★追加: 登録枠が1つもない（上限到達）場合のブロックUI表示★
-          document.getElementById("loading").style.display = "none";
-          document.getElementById("limit-view").style.display = "block";
-          if (data.title) {
-             document.title = data.title;
-          }
         }
       } catch (e) {
         if (retryCount < 2) {
