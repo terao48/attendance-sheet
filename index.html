@@ -164,7 +164,6 @@
       LIFF_ID: "2009266487-GEiMe9Ei"                // LINE Developersで取得したLIFF ID
     };
 
-    
     let MY_LINE_ID = "";          // ログインユーザーのLINE ID
     let IS_VIEW_MODE = false;     // 現在の画面が「閲覧モード」かどうか
     let DEADLINE_HOUR = 23;       // 回答期限時刻（GASから取得して上書きされる）
@@ -214,13 +213,6 @@
      * 画面ロード時に実行され、LIFFの初期化およびユーザー情報の取得を行います
      */
     async function init() {
-      // ★追加: GAS_URL 未設定時のエラーハンドリング
-      if (SETTINGS.GAS_URL.includes("★")) {
-        alert("エラー: GASのWebアプリURLが設定されていません。\nHTMLコード内の SETTINGS.GAS_URL を正しいURLに書き換えてください。");
-        document.getElementById("loading").style.display = "none";
-        return;
-      }
-
       const params = new URLSearchParams(window.location.search);
       IS_VIEW_MODE = (params.get('mode') === 'view'); 
       if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
@@ -284,36 +276,15 @@
         } else if (data.status === "unregistered") {
           document.getElementById("loading").style.display = "none";
           document.getElementById("registration-view").style.display = "block";
-          document.getElementById("regTitle").innerText = data.title || "父兄出欠確認アプリ";
+          document.getElementById("regTitle").innerText = data.data.title || "父兄出欠確認アプリ";
           
           const select = document.getElementById("name-list");
-          const btn = document.querySelector("#registration-view .btn-save");
-          select.innerHTML = ""; // 一旦リストをクリア
-
-          // ★追加: 満員判定などにより選択肢がゼロの場合のUIブロック
-          if (data.list && data.list.length === 0) {
-            select.style.display = "none";
-            if (btn) btn.style.display = "none";
-            
-            const pElem = document.querySelector("#registration-view p");
-            if (pElem) {
-              pElem.innerHTML = "<span style='color:red; font-weight:bold;'>【登録エラー】</span><br><br>現在、選択できるお名前がありません。<br>登録枠が上限に達しているか、名簿に存在しません。<br><br><b>管理者までLINEでご連絡ください。</b>";
-            }
-          } else {
-            let defaultOpt = document.createElement("option"); 
-            defaultOpt.text = "あなたのお名前を選んでください"; 
-            defaultOpt.value = ""; 
-            defaultOpt.disabled = true; 
-            defaultOpt.selected = true; 
-            select.appendChild(defaultOpt);
-
-            data.list.forEach(item => {
-              let opt = document.createElement("option"); 
-              opt.value = item.id; 
-              opt.text = item.name; 
-              select.appendChild(opt);
-            });
-          }
+          data.list.forEach(item => {
+            let opt = document.createElement("option"); 
+            opt.value = item.id; 
+            opt.text = item.name; 
+            select.appendChild(opt);
+          });
         }
       } catch (e) {
         if (retryCount < 2) {
