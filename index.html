@@ -160,7 +160,7 @@
      * アプリ内で共有される状態（State）や定数を管理します
      */
     const SETTINGS = {
-      GAS_URL: "https://script.google.com/macros/s/AKfycbwkMdDbQ90t0Wzlj_11YqZgP3wU6lXA2QdKI3enEsFPMfPzb2OrFq6chbK3jZMiaR05/exec", // デプロイしたGASのURL
+      GAS_URL: "★あなたのGASのウェブアプリURL★", // デプロイしたGASのURL
       LIFF_ID: "2009266487-GEiMe9Ei"                // LINE Developersで取得したLIFF ID
     };
 
@@ -213,6 +213,13 @@
      * 画面ロード時に実行され、LIFFの初期化およびユーザー情報の取得を行います
      */
     async function init() {
+      // ★追加: GAS_URL 未設定時のエラーハンドリング
+      if (SETTINGS.GAS_URL.includes("★")) {
+        alert("エラー: GASのWebアプリURLが設定されていません。\nHTMLコード内の SETTINGS.GAS_URL を正しいURLに書き換えてください。");
+        document.getElementById("loading").style.display = "none";
+        return;
+      }
+
       const params = new URLSearchParams(window.location.search);
       IS_VIEW_MODE = (params.get('mode') === 'view'); 
       if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
@@ -276,15 +283,36 @@
         } else if (data.status === "unregistered") {
           document.getElementById("loading").style.display = "none";
           document.getElementById("registration-view").style.display = "block";
-          document.getElementById("regTitle").innerText = data.data.title || "父兄出欠確認アプリ";
+          document.getElementById("regTitle").innerText = data.title || "父兄出欠確認アプリ";
           
           const select = document.getElementById("name-list");
-          data.list.forEach(item => {
-            let opt = document.createElement("option"); 
-            opt.value = item.id; 
-            opt.text = item.name; 
-            select.appendChild(opt);
-          });
+          const btn = document.querySelector("#registration-view .btn-save");
+          select.innerHTML = ""; // 一旦リストをクリア
+
+          // ★追加: 満員判定などにより選択肢がゼロの場合のUIブロック
+          if (data.list && data.list.length === 0) {
+            select.style.display = "none";
+            if (btn) btn.style.display = "none";
+            
+            const pElem = document.querySelector("#registration-view p");
+            if (pElem) {
+              pElem.innerHTML = "<span style='color:red; font-weight:bold;'>【登録エラー】</span><br><br>現在、選択できるお名前がありません。<br>登録枠が上限に達しているか、名簿に存在しません。<br><br><b>管理者までLINEでご連絡ください。</b>";
+            }
+          } else {
+            let defaultOpt = document.createElement("option"); 
+            defaultOpt.text = "あなたのお名前を選んでください"; 
+            defaultOpt.value = ""; 
+            defaultOpt.disabled = true; 
+            defaultOpt.selected = true; 
+            select.appendChild(defaultOpt);
+
+            data.list.forEach(item => {
+              let opt = document.createElement("option"); 
+              opt.value = item.id; 
+              opt.text = item.name; 
+              select.appendChild(opt);
+            });
+          }
         }
       } catch (e) {
         if (retryCount < 2) {
