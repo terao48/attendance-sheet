@@ -440,19 +440,18 @@
 
       const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
       
-      // GAS 8.2 が期待するデータ構造 (weekLabel, date, familyId, status, comment) に合わせる
+      // GAS 8.2 が期待するデータ構造に合わせる
       const payload = days.map((d, i) => ({
         weekLabel: WEEK_LABEL,
-        date: d.rawDate || d.label, // GAS側の仕様に合わせた日付データ
+        dateLabel: d.label, // ★修正：GAS側の変数名 "dateLabel" に合わせる。d.rawDateは存在しないので d.label を直接指定
         familyId: myData.id,
         status: myData.statuses[i],
         comment: myData.commentStatus[i] || ""
       }));
 
       try {
-        // GAS 8.2 は update_all 時に updates パラメータをパースする仕様
-        const res = await fetchWithTimeout(`${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&updates=${encodeURIComponent(JSON.stringify(payload))}`);
-        if (!res.ok) throw new Error("HTTP Error"); 
+        // ★修正：URLパラメータの "updates=" を "payload=" に変更
+        const res = await fetchWithTimeout(`${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&payload=${encodeURIComponent(JSON.stringify(payload))}`);        if (!res.ok) throw new Error("HTTP Error"); 
         setTimeout(() => { liff.closeWindow(); }, 500);
       } catch (e) { 
         alert("保存エラーが発生しました\n\n通信環境を確認して再度お試しください"); 
