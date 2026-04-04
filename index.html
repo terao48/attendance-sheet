@@ -2,85 +2,71 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>父兄出欠確認アプリ</title> 
+  <title>父兄出欠確認アプリ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  
   <style>
     /* ==========================================
      * CSS変数の定義と基本レイアウト
      * ========================================== */
     :root {
-      --main-green: #27ae60;      
-      --sat-blue: #2980b9;        
-      --sun-red: #d35400;         
-      --bg-light: #f4f7f8;        
-      --my-row-bg: #fffbe6;       
-      --name-col-width: 70px;     
+      --main-green: #27ae60;
+      --sat-blue: #2980b9;
+      --sun-red: #d35400;
+      --bg-light: #f4f7f8;
+      --my-row-bg: #fffbe6;
+      --name-col-width: 70px;
     }
-
     html, body {
-      position: fixed; 
-      width: 100%; 
-      height: 100%; 
-      overflow: hidden; overscroll-behavior: none; 
-      font-family: sans-serif; margin: 0; background: var(--bg-light); color: #333; 
+      position: fixed; width: 100%; height: 100%;
+      overflow: hidden; overscroll-behavior: none;
+      font-family: sans-serif; margin: 0; background: var(--bg-light); color: #333;
     }
-    
-    .container { 
-      padding: 4px; display: flex; flex-direction: column; 
-      height: 100%; height: 100dvh; 
-      overflow: hidden; box-sizing: border-box; 
+    .container {
+      padding: 4px; display: flex; flex-direction: column;
+      height: 100%; height: 100dvh;
+      overflow: hidden; box-sizing: border-box;
     }
     h3 { text-align: center; font-size: 18px; margin: 6px 0; width: 100%; }
 
     /* ==========================================
      * 表 (テーブル) のデザイン
      * ========================================== */
-    .table-wrapper { 
-      flex: 1; overflow-y: auto; overflow-x: auto; 
-      border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
-      margin-bottom: 65px; position: relative; 
+    .table-wrapper {
+      flex: 1; overflow-y: auto; overflow-x: auto;
+      border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 65px; position: relative;
     }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 100%; }
-    
     thead { position: sticky; top: 0; z-index: 10; }
     th { background: var(--main-green); color: white; padding: 4px 0; font-size: 11px; border: none; font-weight: bold; }
     .name-col-head { width: var(--name-col-width); position: sticky; left: 0; z-index: 11; }
-    th.sat { background: var(--sat-blue); } 
-    th.sun { background: var(--sun-red); } 
-    
+    th.sat { background: var(--sat-blue); }
+    th.sun { background: var(--sun-red); }
     .count-box { font-size: 10px; margin-top: 3px; padding: 2px 4px; background: rgba(0,0,0,0.15); font-weight: normal; line-height: 1.3; }
     .count-row { display: flex; justify-content: space-between; }
-
     td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
-    
     .other-row td { height: 34px !important; }
-
-    .name-cell { 
-      width: var(--name-col-width); padding: 0 2px; font-weight: bold; font-size: 12px; 
-      text-align: left; background: #fafafa; border-right: 2px solid var(--main-green); word-break: break-all; 
-      position: sticky; left: 0; z-index: 5; 
+    .name-cell {
+      width: var(--name-col-width); padding: 0 2px; font-weight: bold; font-size: 12px;
+      text-align: left; background: #fafafa; border-right: 2px solid var(--main-green); word-break: break-all;
+      position: sticky; left: 0; z-index: 5;
     }
-    .my-row { background-color: var(--my-row-bg) !important; } 
-    .my-row .name-cell { background-color: var(--my-row-bg) !important; } 
-    
+    .my-row { background-color: var(--my-row-bg) !important; }
+    .my-row .name-cell { background-color: var(--my-row-bg) !important; }
     .status-cell { font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-    .status-〇 { color: var(--main-green); font-weight: bold; } 
+    .status-〇 { color: var(--main-green); font-weight: bold; }
     .status-△ { color: #f39c12; font-weight: bold; }
     .status-× { color: #7f8c8d; font-weight: bold; }
     .status-- { color: #ccc; }
-
     .locked { background-color: #f2f2f2 !important; color: #bbb !important; cursor: not-allowed; }
 
     /* コメント行のスタイル */
     .com-row td { height: 34px !important; }
     .com-row { background: #fff; }
-    
     .com-label { font-size: 10px; color: #888; padding: 2px 6px; border-right: 2px solid #ccc; font-weight: normal; line-height: 1.2; box-sizing: border-box; }
-    .com-label-top { text-align: left; display: block; margin-bottom: 2px; } 
-    .com-label-bottom { text-align: right; display: block; } 
-    
+    .com-label-top { text-align: left; display: block; margin-bottom: 2px; }
+    .com-label-bottom { text-align: right; display: block; }
     .com-icon { font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
     .com-text { font-size: 10px; color: #666; cursor: pointer; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40px; }
 
@@ -89,15 +75,13 @@
      * ========================================== */
     .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; background: white; border-top: 1px solid #ddd; display: none; box-sizing: border-box; z-index: 100; }
     .btn-save { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-
     #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
     .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top: 4px solid var(--main-green); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
     .view-mode .table-wrapper { margin-bottom: 0; }
     .view-mode td { height: 34px; }
     .no-schedule-msg { padding: 40px 20px; text-align: center; font-weight: bold; color: #666; }
-
+    
     .scroll-indicator {
       position: fixed; bottom: 75px; left: 50%; transform: translateX(-50%);
       background: rgba(0, 0, 0, 0.7); color: white; padding: 6px 16px; border-radius: 20px;
@@ -116,7 +100,6 @@
     .modal-btn { flex:1; padding:10px; border:none; border-radius:4px; font-weight:bold; cursor:pointer; }
   </style>
 </head>
-
 <body id="bodyTag">
 
   <div id="loading">
@@ -162,29 +145,29 @@
      */
     const SETTINGS = {
       GAS_URL: "https://script.google.com/macros/s/AKfycbwkMdDbQ90t0Wzlj_11YqZgP3wU6lXA2QdKI3enEsFPMfPzb2OrFq6chbK3jZMiaR05/exec", // ★ご自身のGAS URLに変更してください
-      LIFF_ID: "2009266487-GEiMe9Ei"                // 指定されたLIFF ID
+      LIFF_ID: "2009266487-GEiMe9Ei" // 指定されたLIFF ID
     };
 
-    let MY_LINE_ID = "";          
-    let IS_VIEW_MODE = false;     
-    let DEADLINE_HOUR = 23;       
-    let WEEK_LABEL = "";          // GASに送信するための対象週ラベル
-    let days = [];                
-    let rawData = [];             
-    let hasChanges = false;       
-    let isSaving = false;         
+    let MY_LINE_ID = "";
+    let IS_VIEW_MODE = false;
+    let DEADLINE_HOUR = 23;
+    let WEEK_LABEL = ""; // GASに送信するための対象週ラベル
+    let days = [];
+    let rawData = [];
+    let hasChanges = false;
+    let isSaving = false;
 
-    let currentEditFIdx = -1;     
-    let currentEditDIdx = -1;     
+    let currentEditFIdx = -1;
+    let currentEditDIdx = -1;
 
     const UI_CONFIG = {
-      signs: ["〇", "△", "×", "-"], 
+      signs: ["〇", "△", "×", "-"],
       labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
     };
 
     // 表の外側をスワイプした際の不自然なスクロールを防ぐ処理
     document.addEventListener('touchmove', function(e) {
-      if (e.touches.length > 1) return; 
+      if (e.touches.length > 1) return;
       if (!e.target.closest('.table-wrapper') && !e.target.closest('.modal')) { e.preventDefault(); }
     }, { passive: false });
 
@@ -210,7 +193,7 @@
      */
     async function init() {
       const params = new URLSearchParams(window.location.search);
-      IS_VIEW_MODE = (params.get('mode') === 'view'); 
+      IS_VIEW_MODE = (params.get('mode') === 'view');
       if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
 
       try {
@@ -235,12 +218,11 @@
     async function fetchData(retryCount = 0) {
       const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
       const url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
-      
+
       try {
         const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
         const data = await res.json();
-        
         if (data.status === "error") throw new Error("GAS側エラー: " + data.message);
 
         if (data.data && data.data.title) {
@@ -257,28 +239,33 @@
           }
 
           WEEK_LABEL = data.data.weekLabel; // 保存用に保持
-          days = data.data.dates; 
+          days = data.data.dates;
           rawData = data.data.families;
-          
+
+          // ★修正：GASから送られてきたカスタム締切時間(deadlineHour)をHTML側の変数に適用する処理を追加
+          if (data.data.deadlineHour !== undefined) {
+            DEADLINE_HOUR = data.data.deadlineHour;
+          }
+
           document.getElementById("main-view").style.display = "flex";
           document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
           if (!IS_VIEW_MODE) document.getElementById("footer").style.display = "block";
           document.getElementById("loading").style.display = "none";
-          
-          render(); 
+          render();
+
         } else if (data.status === "unregistered") {
           document.getElementById("loading").style.display = "none";
           document.getElementById("registration-view").style.display = "block";
           document.getElementById("regTitle").innerText = data.data.title || "父兄出欠確認アプリ";
-          
           const select = document.getElementById("name-list");
           data.list.forEach(item => {
-            let opt = document.createElement("option"); 
-            opt.value = item.id; 
-            opt.text = item.name; 
+            let opt = document.createElement("option");
+            opt.value = item.id;
+            opt.text = item.name;
             select.appendChild(opt);
           });
         }
+
       } catch (e) {
         if (retryCount < 2) {
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -289,22 +276,22 @@
         alert("通信エラー、またはタイムアウトが発生しました\n電波の良い所で再読み込みしてください");
       }
     }
-  
+
     /**
      * 4. 表の描画 (UI 8の完全復元)
      */
     function render() {
       if (!days || days.length === 0) return;
-      
+
       const totals = days.map(() => {
-        let obj = {}; 
-        UI_CONFIG.signs.forEach(s => obj[s] = 0); 
+        let obj = {};
+        UI_CONFIG.signs.forEach(s => obj[s] = 0);
         return obj;
       });
 
       rawData.forEach(f => {
-        f.statuses.forEach((s, i) => { 
-          if (totals[i].hasOwnProperty(s)) totals[i][s]++; 
+        f.statuses.forEach((s, i) => {
+          if (totals[i].hasOwnProperty(s)) totals[i][s]++;
         });
       });
 
@@ -323,10 +310,11 @@
         // UIDが登録済みの配列に含まれるかで自分を判定（安全な判定ロジック）
         const isMe = (MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
         const rowClass = isMe ? 'my-row' : 'other-row';
+        
         html += `<tr class="${rowClass}"><td class="name-cell">${f.name}</td>`;
         
         f.statuses.forEach((s, dIdx) => {
-          const isLocked = days[dIdx].isLocked; 
+          const isLocked = days[dIdx].isLocked;
           const canEdit = !IS_VIEW_MODE && isMe;
           const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
           const lockClass = isLocked ? "locked" : "";
@@ -353,7 +341,7 @@
           html += "</tr>";
         }
       });
-      
+
       document.getElementById("mainTable").innerHTML = html + "</tbody>";
       setTimeout(checkScroll, 300);
     }
@@ -369,8 +357,8 @@
       const signs = UI_CONFIG.signs;
       const current = rawData[fIdx].statuses[dIdx];
       rawData[fIdx].statuses[dIdx] = signs[(signs.indexOf(current) + 1) % signs.length];
-      hasChanges = true; 
-      render(); 
+      hasChanges = true;
+      render();
     }
 
     /**
@@ -383,11 +371,9 @@
       }
       currentEditFIdx = fIdx;
       currentEditDIdx = dIdx;
-      
       document.getElementById("modalTitle").innerText = days[dIdx].label + " のコメント";
       document.getElementById("modalDesc").innerText = "コメントを入力 (例: 17:30から参加)";
       document.getElementById("modalDesc").style.display = "block";
-      
       document.getElementById("modalInput").value = rawData[fIdx].commentStatus[dIdx] || "";
       document.getElementById("modalInput").readOnly = false;
       document.getElementById("modalApplyBtn").style.display = "block";
@@ -401,7 +387,6 @@
     function viewModal(name, dateLabel, text) {
       document.getElementById("modalTitle").innerText = `${name} ${dateLabel} のコメント`;
       document.getElementById("modalDesc").style.display = "none";
-      
       document.getElementById("modalInput").value = text;
       document.getElementById("modalInput").readOnly = true;
       document.getElementById("modalApplyBtn").style.display = "none";
@@ -431,15 +416,15 @@
      */
     async function saveAll() {
       if (!hasChanges) { liff.closeWindow(); return; }
-      if (isSaving) return; 
-
+      if (isSaving) return;
       isSaving = true;
+
       const loader = document.getElementById("loading");
-      document.getElementById("loadingText").innerText = "保存中..."; 
+      document.getElementById("loadingText").innerText = "保存中...";
       loader.style.display = "flex";
 
       const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
-      
+
       // GAS 8.2 が期待するデータ構造に合わせる
       const payload = days.map((d, i) => ({
         weekLabel: WEEK_LABEL,
@@ -451,11 +436,12 @@
 
       try {
         // ★修正：URLパラメータの "updates=" を "payload=" に変更
-        const res = await fetchWithTimeout(`${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&payload=${encodeURIComponent(JSON.stringify(payload))}`);        if (!res.ok) throw new Error("HTTP Error"); 
+        const res = await fetchWithTimeout(`${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&payload=${encodeURIComponent(JSON.stringify(payload))}`);
+        if (!res.ok) throw new Error("HTTP Error");
         setTimeout(() => { liff.closeWindow(); }, 500);
-      } catch (e) { 
-        alert("保存エラーが発生しました\n\n通信環境を確認して再度お試しください"); 
-        loader.style.display = "none"; 
+      } catch (e) {
+        alert("保存エラーが発生しました\n\n通信環境を確認して再度お試しください");
+        loader.style.display = "none";
         isSaving = false;
       }
     }
@@ -468,9 +454,9 @@
       document.getElementById("loading").style.display = "flex";
       try {
         await fetchWithTimeout(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}`);
-        window.location.reload(); 
-      } catch (e) { 
-        alert("登録エラーが発生しました"); 
+        window.location.reload();
+      } catch (e) {
+        alert("登録エラーが発生しました");
         document.getElementById("loading").style.display = "none";
       }
     }
@@ -481,16 +467,14 @@
     function checkScroll() {
       const area = document.getElementById("content-area");
       const indicator = document.getElementById("scrollIndicator");
-      
       if (!area || !indicator) return;
-
       const scrollH = Math.round(area.scrollHeight);
       const clientH = Math.round(area.clientHeight);
       const scrollT = Math.round(area.scrollTop);
-
+      
       const canScroll = scrollH > (clientH + 3);
       const isBottom = (scrollH - scrollT) <= (clientH + 10);
-
+      
       if (canScroll && !isBottom) {
         indicator.style.display = "block";
       } else {
@@ -500,6 +484,7 @@
 
     document.getElementById("content-area").addEventListener("scroll", checkScroll);
     window.addEventListener("resize", checkScroll);
+    
     window.onload = init;
   </script>
 </body>
