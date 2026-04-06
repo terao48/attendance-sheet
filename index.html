@@ -21,16 +21,20 @@
     }
     h3 { text-align: center; font-size: 18px; margin: 6px 0; width: 100%; }
 
-    /* 過去データ参照用UIのスタイル */
+    /* ★修正: 過去データ参照用UIを1行のヘッダー風にスタイリング */
     .past-controls {
-      display: none; text-align: center; padding: 6px; background: white; 
-      border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      display: none; align-items: center; justify-content: center; padding: 6px; 
+      background: white; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
     }
-    .past-controls select { padding: 4px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
-    .past-controls span { font-size: 13px; font-weight: bold; margin-right: 4px; color: #555; }
+    .past-controls select { 
+      padding: 2px 4px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; height: 36px; box-sizing: border-box;
+    }
+    .past-controls span { font-size: 14px; font-weight: bold; margin: 0 3px; color: #555; }
+    /* ★修正: ボタン行高さ内で最大化 */
     .btn-show-past {
-      padding: 4px 14px; margin-left: 5px; background: var(--main-green); color: white; 
+      padding: 0 16px; margin-left: 5px; background: var(--main-green); color: white; 
       border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+      font-size: 18px; height: 36px; line-height: 1; display: flex; align-items: center; justify-content: center;
     }
 
     .table-wrapper {
@@ -104,15 +108,13 @@
     <p id="loadingText">読込中...</p>
   </div>
 
-<div id="registration-view" style="display:none; padding:20px; text-align:center;">
+  <div id="registration-view" style="display:none; padding:20px; text-align:center;">
     <h3 id="regTitle">初回登録</h3>
     <p>あなたのお名前を選択してください</p>
     <select id="name-list" style="width:100%; padding:12px; margin:15px 0; font-size:16px;"></select>
-    
     <p style="font-size: 12px; color: #d35400; font-weight: bold; margin-top: 15px;">
       ※ご自身のお名前がない場合や、誤ってアクセスした場合は管理者にご連絡ください。
     </p>
-    
     <button class="btn-save" onclick="link()">登録する</button>
   </div>
 
@@ -189,29 +191,25 @@
       }
     }
 
-async function init() {
+    async function init() {
       const params = new URLSearchParams(window.location.search);
       IS_VIEW_MODE = (params.get('mode') === 'view');
       if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
 
       try {
-        // ★修正: 閲覧モード（IS_VIEW_MODE）かどうかにかかわらず、常にLIFFを初期化してUIDを取得する
         await liff.init({ liffId: SETTINGS.LIFF_ID });
         if (!liff.isLoggedIn()) { liff.login(); return; }
         const profile = liff.getDecodedIDToken();
         MY_LINE_ID = profile.sub;
-
-        await fetchData(); // 初期表示時は引数なし（現在の週を取得）
+        
+        await fetchData(); 
       } catch (e) {
         document.getElementById("loading").style.display = "none";
         console.error(e);
         alert("初期化または通信エラーが発生しました\n\n詳細: " + e.message);
       }
     }
-    
-    /**
-     * ★修正②: targetDateStr引数を追加し、過去データ取得要求に対応
-     */
+
     async function fetchData(retryCount = 0, targetDateStr = null) {
       const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
       let url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
@@ -246,19 +244,22 @@ async function init() {
           if (data.data.deadlineHour !== undefined) DEADLINE_HOUR = data.data.deadlineHour;
 
           document.getElementById("main-view").style.display = "flex";
-          document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
-          if (!IS_VIEW_MODE) document.getElementById("footer").style.display = "block";
           
-          // ★修正②: 閲覧モード時のドロップダウン制御
+          // ★修正: 閲覧モードと編集モードで表示するヘッダーを完全に切り分ける
           if (IS_VIEW_MODE) {
-            document.getElementById("past-view-controls").style.display = "block";
+            document.getElementById("weekTitle").style.display = "none";
+            document.getElementById("past-view-controls").style.display = "flex";
             if (document.getElementById("sel-year").options.length === 0) {
               initDateDropdowns();
             }
-            // 表示された週の基準日(月曜)にドロップダウンを合わせる
             if (data.data.baseDateStr) {
               setDropdownsToDate(data.data.baseDateStr);
             }
+          } else {
+            document.getElementById("weekTitle").style.display = "block";
+            document.getElementById("weekTitle").innerText = data.data.weekLabel;
+            document.getElementById("past-view-controls").style.display = "none";
+            document.getElementById("footer").style.display = "block";
           }
 
           document.getElementById("loading").style.display = "none";
@@ -269,7 +270,7 @@ async function init() {
           document.getElementById("registration-view").style.display = "block";
           document.getElementById("regTitle").innerText = data.data.title || "父兄出欠確認アプリ";
           const select = document.getElementById("name-list");
-          select.innerHTML = ""; // 初期化
+          select.innerHTML = ""; 
           data.list.forEach(item => {
             let opt = document.createElement("option");
             opt.value = item.id;
@@ -289,19 +290,18 @@ async function init() {
       }
     }
 
-    /**
-     * ==========================================
-     * ★追加: 過去データ検索用のドロップダウン制御関数群
-     * ==========================================
-     */
     function initDateDropdowns() {
       const selYear = document.getElementById("sel-year");
       const selMonth = document.getElementById("sel-month");
       const now = new Date();
       const currentYear = now.getFullYear();
 
-      // 現在と過去1年分
-      selYear.innerHTML = `<option value="${currentYear}">${currentYear}</option><option value="${currentYear - 1}">${currentYear - 1}</option>`;
+      // ★修正: 2026年以降のみ選択可能にする
+      let yearHtml = "";
+      for (let y = currentYear; y >= 2026; y--) {
+        yearHtml += `<option value="${y}">${y}</option>`;
+      }
+      selYear.innerHTML = yearHtml;
       
       let monthHtml = "";
       for(let i=1; i<=12; i++) monthHtml += `<option value="${i}">${i}</option>`;
@@ -318,10 +318,10 @@ async function init() {
       const selMonday = document.getElementById("sel-monday");
       
       selMonday.innerHTML = "";
-      const daysInMonth = new Date(y, m, 0).getDate(); // その月の日数
+      const daysInMonth = new Date(y, m, 0).getDate(); 
       for(let d=1; d<=daysInMonth; d++) {
         const date = new Date(y, m - 1, d);
-        if(date.getDay() === 1) { // 1 = 月曜日
+        if(date.getDay() === 1) { 
           const opt = document.createElement("option");
           opt.value = d;
           opt.text = d;
@@ -337,7 +337,8 @@ async function init() {
       const m = parseInt(parts[1]);
       const d = parseInt(parts[2]);
       
-      document.getElementById("sel-year").value = y;
+      const yearOpt = document.querySelector(`#sel-year option[value='${y}']`);
+      if(yearOpt) document.getElementById("sel-year").value = y;
       document.getElementById("sel-month").value = m;
       updateMondays(); 
       document.getElementById("sel-monday").value = d;
@@ -355,7 +356,6 @@ async function init() {
       
       fetchData(0, targetDateStr);
     }
-    // ==========================================
 
     function render() {
       if (!days || days.length === 0) return;
@@ -384,7 +384,8 @@ async function init() {
       html += "</tr></thead><tbody>";
 
       rawData.forEach((f, fIdx) => {
-        const isMe = (MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
+        // 閲覧モードの場合は、自分であっても背景色をハイライトしないようにする(お好みで戻せます)
+        const isMe = (!IS_VIEW_MODE && MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
         const rowClass = isMe ? 'my-row' : 'other-row';
         html += `<tr class="${rowClass}"><td class="name-cell">${f.name}</td>`;
         
