@@ -104,10 +104,15 @@
     <p id="loadingText">読込中...</p>
   </div>
 
-  <div id="registration-view" style="display:none; padding:20px; text-align:center;">
+<div id="registration-view" style="display:none; padding:20px; text-align:center;">
     <h3 id="regTitle">初回登録</h3>
     <p>あなたのお名前を選択してください</p>
     <select id="name-list" style="width:100%; padding:12px; margin:15px 0; font-size:16px;"></select>
+    
+    <p style="font-size: 12px; color: #d35400; font-weight: bold; margin-top: 15px;">
+      ※ご自身のお名前がない場合や、誤ってアクセスした場合は管理者にご連絡ください。
+    </p>
+    
     <button class="btn-save" onclick="link()">登録する</button>
   </div>
 
@@ -184,18 +189,18 @@
       }
     }
 
-    async function init() {
+async function init() {
       const params = new URLSearchParams(window.location.search);
       IS_VIEW_MODE = (params.get('mode') === 'view');
       if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
 
       try {
-        if (!IS_VIEW_MODE) {
-          await liff.init({ liffId: SETTINGS.LIFF_ID });
-          if (!liff.isLoggedIn()) { liff.login(); return; }
-          const profile = liff.getDecodedIDToken();
-          MY_LINE_ID = profile.sub;
-        }
+        // ★修正: 閲覧モード（IS_VIEW_MODE）かどうかにかかわらず、常にLIFFを初期化してUIDを取得する
+        await liff.init({ liffId: SETTINGS.LIFF_ID });
+        if (!liff.isLoggedIn()) { liff.login(); return; }
+        const profile = liff.getDecodedIDToken();
+        MY_LINE_ID = profile.sub;
+
         await fetchData(); // 初期表示時は引数なし（現在の週を取得）
       } catch (e) {
         document.getElementById("loading").style.display = "none";
@@ -203,7 +208,7 @@
         alert("初期化または通信エラーが発生しました\n\n詳細: " + e.message);
       }
     }
-
+    
     /**
      * ★修正②: targetDateStr引数を追加し、過去データ取得要求に対応
      */
