@@ -6,16 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    /* ==========================================
-     * CSS変数の定義と基本レイアウト
-     * ========================================== */
     :root {
-      --main-green: #27ae60;
-      --sat-blue: #2980b9;
-      --sun-red: #d35400;
-      --bg-light: #f4f7f8;
-      --my-row-bg: #fffbe6;
-      --name-col-width: 70px;
+      --main-green: #27ae60; --sat-blue: #2980b9; --sun-red: #d35400;
+      --bg-light: #f4f7f8; --my-row-bg: #fffbe6; --name-col-width: 70px;
     }
     html, body {
       position: fixed; width: 100%; height: 100%;
@@ -24,14 +17,22 @@
     }
     .container {
       padding: 4px; display: flex; flex-direction: column;
-      height: 100%; height: 100dvh;
-      overflow: hidden; box-sizing: border-box;
+      height: 100%; height: 100dvh; overflow: hidden; box-sizing: border-box;
     }
     h3 { text-align: center; font-size: 18px; margin: 6px 0; width: 100%; }
 
-    /* ==========================================
-     * 表 (テーブル) のデザイン
-     * ========================================== */
+    /* 過去データ参照用UIのスタイル */
+    .past-controls {
+      display: none; text-align: center; padding: 6px; background: white; 
+      border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    .past-controls select { padding: 4px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
+    .past-controls span { font-size: 13px; font-weight: bold; margin-right: 4px; color: #555; }
+    .btn-show-past {
+      padding: 4px 14px; margin-left: 5px; background: var(--main-green); color: white; 
+      border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+    }
+
     .table-wrapper {
       flex: 1; overflow-y: auto; overflow-x: auto;
       border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -61,7 +62,6 @@
     .status-- { color: #ccc; }
     .locked { background-color: #f2f2f2 !important; color: #bbb !important; cursor: not-allowed; }
 
-    /* コメント行のスタイル */
     .com-row td { height: 34px !important; }
     .com-row { background: #fff; }
     .com-label { font-size: 10px; color: #888; padding: 2px 6px; border-right: 2px solid #ccc; font-weight: normal; line-height: 1.2; box-sizing: border-box; }
@@ -70,14 +70,12 @@
     .com-icon { font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
     .com-text { font-size: 10px; color: #666; cursor: pointer; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40px; }
 
-    /* ==========================================
-     * フッター・ローディング・スクロールガイド・モーダル
-     * ========================================== */
     .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; background: white; border-top: 1px solid #ddd; display: none; box-sizing: border-box; z-index: 100; }
     .btn-save { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
     #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
     .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top: 4px solid var(--main-green); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
     .view-mode .table-wrapper { margin-bottom: 0; }
     .view-mode td { height: 34px; }
     .no-schedule-msg { padding: 40px 20px; text-align: center; font-weight: bold; color: #666; }
@@ -91,7 +89,6 @@
     @keyframes bounce { 0%, 100% { bottom: 75px; } 50% { bottom: 65px; } }
     .view-mode .scroll-indicator { bottom: 20px; }
 
-    /* コメント用モーダル */
     .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:2000; }
     .modal-box { background:white; width:85%; max-width:400px; border-radius:8px; padding:20px; box-sizing:border-box; }
     .modal-title { font-weight:bold; margin-bottom:10px; font-size:14px; border-bottom: 2px solid var(--main-green); padding-bottom: 5px; }
@@ -116,6 +113,14 @@
 
   <div class="container" id="main-view" style="display:none;">
     <h3 id="weekTitle"></h3>
+    
+    <div id="past-view-controls" class="past-controls">
+      <select id="sel-year"></select> <span>年</span>
+      <select id="sel-month"></select> <span>月</span>
+      <select id="sel-monday"></select> <span>日(週)</span>
+      <button class="btn-show-past" onclick="fetchPastData()">表示</button>
+    </div>
+
     <div class="table-wrapper" id="content-area">
       <table id="mainTable"></table>
     </div>
@@ -138,20 +143,15 @@
   </div>
 
   <script>
-    /**
-     * ==========================================
-     * 1. 接続設定とグローバル変数
-     * ==========================================
-     */
     const SETTINGS = {
       GAS_URL: "https://script.google.com/macros/s/AKfycbwkMdDbQ90t0Wzlj_11YqZgP3wU6lXA2QdKI3enEsFPMfPzb2OrFq6chbK3jZMiaR05/exec", // ★ご自身のGAS URLに変更してください
-      LIFF_ID: "2009266487-GEiMe9Ei" // 指定されたLIFF ID
+      LIFF_ID: "2009266487-GEiMe9Ei"
     };
 
     let MY_LINE_ID = "";
     let IS_VIEW_MODE = false;
     let DEADLINE_HOUR = 23;
-    let WEEK_LABEL = ""; // GASに送信するための対象週ラベル
+    let WEEK_LABEL = "";
     let days = [];
     let rawData = [];
     let hasChanges = false;
@@ -165,15 +165,11 @@
       labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
     };
 
-    // 表の外側をスワイプした際の不自然なスクロールを防ぐ処理
     document.addEventListener('touchmove', function(e) {
       if (e.touches.length > 1) return;
       if (!e.target.closest('.table-wrapper') && !e.target.closest('.modal')) { e.preventDefault(); }
     }, { passive: false });
 
-    /**
-     * タイムアウト付きFetch関数
-     */
     async function fetchWithTimeout(url, options = {}, timeout = 15000) {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeout);
@@ -188,9 +184,6 @@
       }
     }
 
-    /**
-     * 2. アプリの初期化 (8.2のIDトークン取得ロジック統合)
-     */
     async function init() {
       const params = new URLSearchParams(window.location.search);
       IS_VIEW_MODE = (params.get('mode') === 'view');
@@ -200,11 +193,10 @@
         if (!IS_VIEW_MODE) {
           await liff.init({ liffId: SETTINGS.LIFF_ID });
           if (!liff.isLoggedIn()) { liff.login(); return; }
-          // 高速なIDトークンによるUID取得 (8.2ロジック)
           const profile = liff.getDecodedIDToken();
           MY_LINE_ID = profile.sub;
         }
-        await fetchData();
+        await fetchData(); // 初期表示時は引数なし（現在の週を取得）
       } catch (e) {
         document.getElementById("loading").style.display = "none";
         console.error(e);
@@ -213,11 +205,15 @@
     }
 
     /**
-     * 3. GASからのデータ取得
+     * ★修正②: targetDateStr引数を追加し、過去データ取得要求に対応
      */
-    async function fetchData(retryCount = 0) {
+    async function fetchData(retryCount = 0, targetDateStr = null) {
       const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
-      const url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
+      let url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
+      
+      if (targetDateStr) {
+        url += `&targetDate=${targetDateStr}`;
+      }
 
       try {
         const res = await fetchWithTimeout(url);
@@ -238,18 +234,28 @@
             return;
           }
 
-          WEEK_LABEL = data.data.weekLabel; // 保存用に保持
+          WEEK_LABEL = data.data.weekLabel;
           days = data.data.dates;
           rawData = data.data.families;
 
-          // ★修正：GASから送られてきたカスタム締切時間(deadlineHour)をHTML側の変数に適用する処理を追加
-          if (data.data.deadlineHour !== undefined) {
-            DEADLINE_HOUR = data.data.deadlineHour;
-          }
+          if (data.data.deadlineHour !== undefined) DEADLINE_HOUR = data.data.deadlineHour;
 
           document.getElementById("main-view").style.display = "flex";
           document.getElementById("weekTitle").innerText = data.data.weekLabel + (IS_VIEW_MODE ? " (閲覧用)" : "");
           if (!IS_VIEW_MODE) document.getElementById("footer").style.display = "block";
+          
+          // ★修正②: 閲覧モード時のドロップダウン制御
+          if (IS_VIEW_MODE) {
+            document.getElementById("past-view-controls").style.display = "block";
+            if (document.getElementById("sel-year").options.length === 0) {
+              initDateDropdowns();
+            }
+            // 表示された週の基準日(月曜)にドロップダウンを合わせる
+            if (data.data.baseDateStr) {
+              setDropdownsToDate(data.data.baseDateStr);
+            }
+          }
+
           document.getElementById("loading").style.display = "none";
           render();
 
@@ -258,6 +264,7 @@
           document.getElementById("registration-view").style.display = "block";
           document.getElementById("regTitle").innerText = data.data.title || "父兄出欠確認アプリ";
           const select = document.getElementById("name-list");
+          select.innerHTML = ""; // 初期化
           data.list.forEach(item => {
             let opt = document.createElement("option");
             opt.value = item.id;
@@ -269,7 +276,7 @@
       } catch (e) {
         if (retryCount < 2) {
           await new Promise(resolve => setTimeout(resolve, 500));
-          return await fetchData(retryCount + 1);
+          return await fetchData(retryCount + 1, targetDateStr);
         }
         document.getElementById("loading").style.display = "none";
         console.error(e);
@@ -278,8 +285,73 @@
     }
 
     /**
-     * 4. 表の描画 (UI 8の完全復元)
+     * ==========================================
+     * ★追加: 過去データ検索用のドロップダウン制御関数群
+     * ==========================================
      */
+    function initDateDropdowns() {
+      const selYear = document.getElementById("sel-year");
+      const selMonth = document.getElementById("sel-month");
+      const now = new Date();
+      const currentYear = now.getFullYear();
+
+      // 現在と過去1年分
+      selYear.innerHTML = `<option value="${currentYear}">${currentYear}</option><option value="${currentYear - 1}">${currentYear - 1}</option>`;
+      
+      let monthHtml = "";
+      for(let i=1; i<=12; i++) monthHtml += `<option value="${i}">${i}</option>`;
+      selMonth.innerHTML = monthHtml;
+      
+      selYear.addEventListener("change", updateMondays);
+      selMonth.addEventListener("change", updateMondays);
+      updateMondays();
+    }
+
+    function updateMondays() {
+      const y = parseInt(document.getElementById("sel-year").value);
+      const m = parseInt(document.getElementById("sel-month").value);
+      const selMonday = document.getElementById("sel-monday");
+      
+      selMonday.innerHTML = "";
+      const daysInMonth = new Date(y, m, 0).getDate(); // その月の日数
+      for(let d=1; d<=daysInMonth; d++) {
+        const date = new Date(y, m - 1, d);
+        if(date.getDay() === 1) { // 1 = 月曜日
+          const opt = document.createElement("option");
+          opt.value = d;
+          opt.text = d;
+          selMonday.appendChild(opt);
+        }
+      }
+    }
+
+    function setDropdownsToDate(dateStr) {
+      if (!dateStr) return;
+      const parts = dateStr.split("-");
+      const y = parseInt(parts[0]);
+      const m = parseInt(parts[1]);
+      const d = parseInt(parts[2]);
+      
+      document.getElementById("sel-year").value = y;
+      document.getElementById("sel-month").value = m;
+      updateMondays(); 
+      document.getElementById("sel-monday").value = d;
+    }
+
+    function fetchPastData() {
+      const y = document.getElementById("sel-year").value;
+      const m = String(document.getElementById("sel-month").value).padStart(2, '0');
+      const d = String(document.getElementById("sel-monday").value).padStart(2, '0');
+      const targetDateStr = `${y}-${m}-${d}`;
+      
+      document.getElementById("main-view").style.display = "none";
+      document.getElementById("loading").style.display = "flex";
+      document.getElementById("loadingText").innerText = "データ取得中...";
+      
+      fetchData(0, targetDateStr);
+    }
+    // ==========================================
+
     function render() {
       if (!days || days.length === 0) return;
 
@@ -307,10 +379,8 @@
       html += "</tr></thead><tbody>";
 
       rawData.forEach((f, fIdx) => {
-        // UIDが登録済みの配列に含まれるかで自分を判定（安全な判定ロジック）
         const isMe = (MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
         const rowClass = isMe ? 'my-row' : 'other-row';
-        
         html += `<tr class="${rowClass}"><td class="name-cell">${f.name}</td>`;
         
         f.statuses.forEach((s, dIdx) => {
@@ -322,14 +392,12 @@
         });
         html += "</tr>";
 
-        // コメント行の描画
         const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
         if (isMe || hasComment) {
           html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label"><span class="com-label-top">┗ 💬</span><span class="com-label-bottom">コメント</span></td>`;
           f.commentStatus.forEach((c, dIdx) => {
             const isLocked = days[dIdx].isLocked;
             const lockClass = isLocked ? "locked" : "";
-            
             if (isMe && !IS_VIEW_MODE) {
               const icon = c ? '💬' : '＋';
               html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
@@ -346,13 +414,9 @@
       setTimeout(checkScroll, 300);
     }
 
-    /**
-     * 5. セルタップ時のステータス切り替え
-     */
     function toggle(fIdx, dIdx) {
       if (days[dIdx].isLocked) {
-        alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません");
-        return;
+        alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません"); return;
       }
       const signs = UI_CONFIG.signs;
       const current = rawData[fIdx].statuses[dIdx];
@@ -361,16 +425,9 @@
       render();
     }
 
-    /**
-     * コメント入力用モーダルを開く
-     */
     function openModal(fIdx, dIdx) {
-      if (days[dIdx].isLocked) {
-        alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません");
-        return;
-      }
-      currentEditFIdx = fIdx;
-      currentEditDIdx = dIdx;
+      if (days[dIdx].isLocked) { alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません"); return; }
+      currentEditFIdx = fIdx; currentEditDIdx = dIdx;
       document.getElementById("modalTitle").innerText = days[dIdx].label + " のコメント";
       document.getElementById("modalDesc").innerText = "コメントを入力 (例: 17:30から参加)";
       document.getElementById("modalDesc").style.display = "block";
@@ -381,9 +438,6 @@
       setTimeout(() => document.getElementById("modalInput").focus(), 100);
     }
 
-    /**
-     * 他者のコメント閲覧用モーダルを開く
-     */
     function viewModal(name, dateLabel, text) {
       document.getElementById("modalTitle").innerText = `${name} ${dateLabel} のコメント`;
       document.getElementById("modalDesc").style.display = "none";
@@ -393,27 +447,19 @@
       document.getElementById("commentModal").style.display = "flex";
     }
 
-    /**
-     * モーダル決定処理
-     */
     function applyComment() {
       if (currentEditFIdx === -1) return;
       const val = document.getElementById("modalInput").value;
       rawData[currentEditFIdx].commentStatus[currentEditDIdx] = val;
       hasChanges = true;
-      closeModal();
-      render();
+      closeModal(); render();
     }
 
     function closeModal() {
       document.getElementById("commentModal").style.display = "none";
-      currentEditFIdx = -1;
-      currentEditDIdx = -1;
+      currentEditFIdx = -1; currentEditDIdx = -1;
     }
 
-    /**
-     * 6. データの保存処理 (8.2 GASのロジックに適合するペイロード)
-     */
     async function saveAll() {
       if (!hasChanges) { liff.closeWindow(); return; }
       if (isSaving) return;
@@ -424,31 +470,24 @@
       loader.style.display = "flex";
 
       const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
-
-      // GAS 8.2 が期待するデータ構造に合わせる
       const payload = days.map((d, i) => ({
         weekLabel: WEEK_LABEL,
-        dateLabel: d.label, // ★修正：GAS側の変数名 "dateLabel" に合わせる。d.rawDateは存在しないので d.label を直接指定
+        dateLabel: d.label, 
         familyId: myData.id,
         status: myData.statuses[i],
         comment: myData.commentStatus[i] || ""
       }));
 
       try {
-        // ★修正：URLパラメータの "updates=" を "payload=" に変更
         const res = await fetchWithTimeout(`${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&payload=${encodeURIComponent(JSON.stringify(payload))}`);
         if (!res.ok) throw new Error("HTTP Error");
         setTimeout(() => { liff.closeWindow(); }, 500);
       } catch (e) {
         alert("保存エラーが発生しました\n\n通信環境を確認して再度お試しください");
-        loader.style.display = "none";
-        isSaving = false;
+        loader.style.display = "none"; isSaving = false;
       }
     }
 
-    /**
-     * 初回アクセス時の連携処理
-     */
     async function link() {
       const sid = document.getElementById("name-list").value;
       document.getElementById("loading").style.display = "flex";
@@ -461,9 +500,6 @@
       }
     }
 
-    /**
-     * スクロールガイド判定
-     */
     function checkScroll() {
       const area = document.getElementById("content-area");
       const indicator = document.getElementById("scrollIndicator");
