@@ -19,9 +19,8 @@
       padding: 4px; display: flex; flex-direction: column;
       height: 100%; height: 100dvh; overflow: hidden; box-sizing: border-box;
     }
-    h3 { text-align: center; font-size: 18px; margin: 6px 0; width: 100%; }
+    h3 { text-align: center; font-size: 16px; margin: 6px 0; width: 100%; }
 
-    /* 過去データ参照用UIのスタイリング */
     .past-controls {
       display: none; align-items: center; justify-content: center; padding: 6px; 
       background: white; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
@@ -47,6 +46,11 @@
     .name-col-head { width: var(--name-col-width); position: sticky; left: 0; z-index: 11; }
     th.sat { background: var(--sat-blue); }
     th.sun { background: var(--sun-red); }
+    
+    /* ★締切後の列全体をグレーアウトするCSS */
+    th.locked { background: #95a5a6 !important; color: #eee !important; }
+    .locked { background-color: #f2f2f2 !important; color: #bbb !important; cursor: not-allowed; }
+
     .count-box { font-size: 10px; margin-top: 3px; padding: 2px 4px; background: rgba(0,0,0,0.15); font-weight: normal; line-height: 1.3; }
     .count-row { display: flex; justify-content: space-between; }
     td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
@@ -63,7 +67,6 @@
     .status-△ { color: #f39c12; font-weight: bold; }
     .status-× { color: #7f8c8d; font-weight: bold; }
     .status-- { color: #ccc; }
-    .locked { background-color: #f2f2f2 !important; color: #bbb !important; cursor: not-allowed; }
 
     .com-row td { height: 34px !important; }
     .com-row { background: #fff; }
@@ -244,7 +247,6 @@
 
           document.getElementById("main-view").style.display = "flex";
           
-          // ★閲覧モードと編集モードのヘッダー切り替え
           if (IS_VIEW_MODE) {
             document.getElementById("weekTitle").style.display = "none";
             document.getElementById("past-view-controls").style.display = "flex";
@@ -256,7 +258,8 @@
             }
           } else {
             document.getElementById("weekTitle").style.display = "block";
-            document.getElementById("weekTitle").innerText = data.data.weekLabel;
+            // ★本日日付をヘッダーに表示
+            document.getElementById("weekTitle").innerText = `${data.data.weekLabel} 　本日: ${data.data.todayLabel}`;
             document.getElementById("past-view-controls").style.display = "none";
             document.getElementById("footer").style.display = "block";
           }
@@ -293,10 +296,8 @@
       const selYear = document.getElementById("sel-year");
       const selMonth = document.getElementById("sel-month");
       const now = new Date();
-      // 今の年を取得。もし2026年より前なら2026年を基準にする
       const currentYear = Math.max(now.getFullYear(), 2026);
 
-      // 年のプルダウン (現在の年 ～ 2026年まで)
       let yearHtml = "";
       for (let y = currentYear; y >= 2026; y--) {
         yearHtml += `<option value="${y}">${y}</option>`;
@@ -333,12 +334,20 @@
     function setDropdownsToDate(dateStr) {
       if (!dateStr) return;
       const parts = dateStr.split("-");
-      const y = parseInt(parts[0]);
-      const m = parseInt(parts[1]);
-      const d = parseInt(parts[2]);
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const d = parseInt(parts[2], 10);
       
-      const yearOpt = document.querySelector(`#sel-year option[value='${y}']`);
-      if(yearOpt) document.getElementById("sel-year").value = y;
+      // プルダウンに年が存在しない場合は動的に追加する（古い履歴呼び出し時など）
+      let selYear = document.getElementById("sel-year");
+      let yearExists = Array.from(selYear.options).some(opt => parseInt(opt.value) === y);
+      if (!yearExists) {
+        const opt = document.createElement("option");
+        opt.value = y; opt.text = y;
+        selYear.appendChild(opt);
+      }
+      
+      selYear.value = y;
       document.getElementById("sel-month").value = m;
       updateMondays(); 
       document.getElementById("sel-monday").value = d;
@@ -372,10 +381,11 @@
         });
       });
 
-      let html = `<thead><tr><th class="name-col-head">団員\n父兄</th>`;
+      let html = `<thead><tr><th class="name-col-head">団員父兄</th>`;
       days.forEach((d, i) => {
         let cls = (d.label.includes("日") || d.label.includes("祝")) ? "sun" : d.label.includes("土") ? "sat" : "";
-        html += `<th class="${cls}">${d.label}<div class="count-box">`;
+        let lockCls = d.isLocked ? "locked" : "";
+        html += `<th class="${cls} ${lockCls}">${d.label}<div class="count-box">`;
         UI_CONFIG.signs.forEach(s => {
           html += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span>${totals[i][s]}</span></div>`;
         });
@@ -384,14 +394,13 @@
       html += "</tr></thead><tbody>";
 
       rawData.forEach((f, fIdx) => {
-        // 閲覧モードの場合は、自分であっても背景色をハイライトしないようにする(お好みで戻せます)
         const isMe = (!IS_VIEW_MODE && MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
         const rowClass = isMe ? 'my-row' : 'other-row';
         html += `<tr class="${rowClass}"><td class="name-cell">${f.name}</td>`;
         
         f.statuses.forEach((s, dIdx) => {
           const isLocked = days[dIdx].isLocked;
-          const canEdit = !IS_VIEW_MODE && isMe;
+          const canEdit = !IS_VIEW_MODE && isMe && !isLocked;
           const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
           const lockClass = isLocked ? "locked" : "";
           html += `<td class="status-cell status-${s} ${lockClass}" ${clickAttr}>${s}</td>`;
@@ -406,7 +415,8 @@
             const lockClass = isLocked ? "locked" : "";
             if (isMe && !IS_VIEW_MODE) {
               const icon = c ? '💬' : '＋';
-              html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
+              const clickAttr = !isLocked ? `onclick="openModal(${fIdx}, ${dIdx})"` : ``;
+              html += `<td class="${lockClass}"><span class="com-icon" ${clickAttr}>${icon}</span></td>`;
             } else {
               const displayTxt = c ? `<span class="com-text" onclick="viewModal('${f.name}', '${days[dIdx].label}', '${c}')">💬</span>` : '-';
               html += `<td class="${lockClass}"><span class="com-icon">${displayTxt}</span></td>`;
@@ -421,9 +431,6 @@
     }
 
     function toggle(fIdx, dIdx) {
-      if (days[dIdx].isLocked) {
-        alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません"); return;
-      }
       const signs = UI_CONFIG.signs;
       const current = rawData[fIdx].statuses[dIdx];
       rawData[fIdx].statuses[dIdx] = signs[(signs.indexOf(current) + 1) % signs.length];
@@ -432,7 +439,6 @@
     }
 
     function openModal(fIdx, dIdx) {
-      if (days[dIdx].isLocked) { alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません"); return; }
       currentEditFIdx = fIdx; currentEditDIdx = dIdx;
       document.getElementById("modalTitle").innerText = days[dIdx].label + " のコメント";
       document.getElementById("modalDesc").innerText = "コメントを入力 (例: 17:30から参加)";
