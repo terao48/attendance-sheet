@@ -21,7 +21,7 @@
     }
     h3 { text-align: center; font-size: 18px; margin: 6px 0; width: 100%; }
 
-    /* ★修正: 過去データ参照用UIを1行のヘッダー風にスタイリング */
+    /* 過去データ参照用UIのスタイリング */
     .past-controls {
       display: none; align-items: center; justify-content: center; padding: 6px; 
       background: white; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
@@ -30,7 +30,6 @@
       padding: 2px 4px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; height: 36px; box-sizing: border-box;
     }
     .past-controls span { font-size: 14px; font-weight: bold; margin: 0 3px; color: #555; }
-    /* ★修正: ボタン行高さ内で最大化 */
     .btn-show-past {
       padding: 0 16px; margin-left: 5px; background: var(--main-green); color: white; 
       border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
@@ -245,7 +244,7 @@
 
           document.getElementById("main-view").style.display = "flex";
           
-          // ★修正: 閲覧モードと編集モードで表示するヘッダーを完全に切り分ける
+          // ★閲覧モードと編集モードのヘッダー切り替え
           if (IS_VIEW_MODE) {
             document.getElementById("weekTitle").style.display = "none";
             document.getElementById("past-view-controls").style.display = "flex";
@@ -294,9 +293,10 @@
       const selYear = document.getElementById("sel-year");
       const selMonth = document.getElementById("sel-month");
       const now = new Date();
-      const currentYear = now.getFullYear();
+      // 今の年を取得。もし2026年より前なら2026年を基準にする
+      const currentYear = Math.max(now.getFullYear(), 2026);
 
-      // ★修正: 2026年以降のみ選択可能にする
+      // 年のプルダウン (現在の年 ～ 2026年まで)
       let yearHtml = "";
       for (let y = currentYear; y >= 2026; y--) {
         yearHtml += `<option value="${y}">${y}</option>`;
@@ -372,7 +372,7 @@
         });
       });
 
-      let html = `<thead><tr><th class="name-col-head">団員父兄</th>`;
+      let html = `<thead><tr><th class="name-col-head">団員\n父兄</th>`;
       days.forEach((d, i) => {
         let cls = (d.label.includes("日") || d.label.includes("祝")) ? "sun" : d.label.includes("土") ? "sat" : "";
         html += `<th class="${cls}">${d.label}<div class="count-box">`;
