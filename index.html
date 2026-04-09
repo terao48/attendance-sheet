@@ -6,10 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
+    /* ---------------------------------------------------
+       UIの基本カラー・サイズ設定
+    --------------------------------------------------- */
     :root {
       --main-green: #27ae60; --sat-blue: #2980b9; --sun-red: #d35400;
       --bg-light: #f4f7f8; --my-row-bg: #fffbe6; --name-col-width: 70px;
     }
+    
+    /* ベースレイアウト: 画面固定・スクロールの抑制 */
     html, body {
       position: fixed; width: 100%; height: 100%;
       overflow: hidden; overscroll-behavior: none;
@@ -21,7 +26,7 @@
     }
     h3 { text-align: center; font-size: 18px; margin: 6px 0; width: 100%; }
 
-    /* ★修正: 過去データ参照用UIを1行のヘッダー風にスタイリング */
+    /* 過去データ参照用UI（閲覧モードのみ表示） */
     .past-controls {
       display: none; align-items: center; justify-content: center; padding: 6px; 
       background: white; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
@@ -30,13 +35,13 @@
       padding: 2px 4px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; height: 36px; box-sizing: border-box;
     }
     .past-controls span { font-size: 14px; font-weight: bold; margin: 0 3px; color: #555; }
-    /* ★修正: ボタン行高さ内で最大化 */
     .btn-show-past {
       padding: 0 16px; margin-left: 5px; background: var(--main-green); color: white; 
       border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
       font-size: 18px; height: 36px; line-height: 1; display: flex; align-items: center; justify-content: center;
     }
 
+    /* テーブル・グリッド関連 */
     .table-wrapper {
       flex: 1; overflow-y: auto; overflow-x: auto;
       border-radius: 8px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -48,17 +53,24 @@
     .name-col-head { width: var(--name-col-width); position: sticky; left: 0; z-index: 11; }
     th.sat { background: var(--sat-blue); }
     th.sun { background: var(--sun-red); }
+    
+    /* 統計（参加人数の集計）表示用 */
     .count-box { font-size: 10px; margin-top: 3px; padding: 2px 4px; background: rgba(0,0,0,0.15); font-weight: normal; line-height: 1.3; }
     .count-row { display: flex; justify-content: space-between; }
     td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
     .other-row td { height: 34px !important; }
+    
+    /* 名前セル（左端固定） */
     .name-cell {
       width: var(--name-col-width); padding: 0 2px; font-weight: bold; font-size: 12px;
       text-align: left; background: #fafafa; border-right: 2px solid var(--main-green); word-break: break-all;
       position: sticky; left: 0; z-index: 5;
     }
+    /* 自分の行のハイライト */
     .my-row { background-color: var(--my-row-bg) !important; }
     .my-row .name-cell { background-color: var(--my-row-bg) !important; }
+    
+    /* ステータスセルの状態別スタイル */
     .status-cell { font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
     .status-〇 { color: var(--main-green); font-weight: bold; }
     .status-△ { color: #f39c12; font-weight: bold; }
@@ -66,6 +78,7 @@
     .status-- { color: #ccc; }
     .locked { background-color: #f2f2f2 !important; color: #bbb !important; cursor: not-allowed; }
 
+    /* コメント行 */
     .com-row td { height: 34px !important; }
     .com-row { background: #fff; }
     .com-label { font-size: 10px; color: #888; padding: 2px 6px; border-right: 2px solid #ccc; font-weight: normal; line-height: 1.2; box-sizing: border-box; }
@@ -74,16 +87,21 @@
     .com-icon { font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
     .com-text { font-size: 10px; color: #666; cursor: pointer; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40px; }
 
+    /* フッター・保存ボタン */
     .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; background: white; border-top: 1px solid #ddd; display: none; box-sizing: border-box; z-index: 100; }
     .btn-save { width: 100%; background: var(--main-green); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    
+    /* ローディングスピナー */
     #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
     .spinner { width: 40px; height: 40px; border: 4px solid #ddd; border-top: 4px solid var(--main-green); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     
+    /* 閲覧モード固有のスタイル調整 */
     .view-mode .table-wrapper { margin-bottom: 0; }
     .view-mode td { height: 34px; }
     .no-schedule-msg { padding: 40px 20px; text-align: center; font-weight: bold; color: #666; }
     
+    /* スクロールインジケーター（下部案内） */
     .scroll-indicator {
       position: fixed; bottom: 75px; left: 50%; transform: translateX(-50%);
       background: rgba(0, 0, 0, 0.7); color: white; padding: 6px 16px; border-radius: 20px;
@@ -93,6 +111,7 @@
     @keyframes bounce { 0%, 100% { bottom: 75px; } 50% { bottom: 65px; } }
     .view-mode .scroll-indicator { bottom: 20px; }
 
+    /* モーダルウィンドウ */
     .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:2000; }
     .modal-box { background:white; width:85%; max-width:400px; border-radius:8px; padding:20px; box-sizing:border-box; }
     .modal-title { font-weight:bold; margin-bottom:10px; font-size:14px; border-bottom: 2px solid var(--main-green); padding-bottom: 5px; }
@@ -131,6 +150,7 @@
     <div class="table-wrapper" id="content-area">
       <table id="mainTable"></table>
     </div>
+    
     <div id="scrollIndicator" class="scroll-indicator">▼ 下に続きがあります</div>
     <div id="footer" class="footer-bar">
       <button class="btn-save" onclick="saveAll()">変更を保存して閉じる</button>
@@ -150,34 +170,82 @@
   </div>
 
   <script>
+    /**
+     * =========================================================================================
+     * 【レベル1：システム全体の目的】
+     * 本ファイルは、少年団の父兄出欠管理システムのフロントエンド（LIFFアプリ）です。
+     * GASをバックエンドとして通信し、登録済みのLINEユーザーに基づく出欠データの閲覧・編集機能を提供します。
+     * =========================================================================================
+     * * 【レベル2：外部設定】
+     * 以下のURLとIDは、運用環境のGASデプロイURLとLINE DevelopersのLIFF IDに必ず書き換えてください。
+     */
     const SETTINGS = {
-      GAS_URL: "https://script.google.com/macros/s/AKfycbz4M2wVSJmz1WwE5Aevak9JN0MPZTlbNeYiPDRaFATwtrF2vJdRh2zxIgGnJe05iNoe/exec", // ★ご自身のGAS URLに変更してください
-      LIFF_ID: "2009266487-GEiMe9Ei"
+      GAS_URL: "https://script.google.com/macros/s/AKfycbz4M2wVSJmz1WwE5Aevak9JN0MPZTlbNeYiPDRaFATwtrF2vJdRh2zxIgGnJe05iNoe/exec", // ★ご自身のGAS URLに変更
+      LIFF_ID: "2009266487-GEiMe9Ei" // ★ご自身のLIFF IDに変更
     };
 
-    let MY_LINE_ID = "";
-    let IS_VIEW_MODE = false;
-    let DEADLINE_HOUR = 23;
-    let WEEK_LABEL = "";
-    let days = [];
-    let rawData = [];
-    let hasChanges = false;
-    let isSaving = false;
+    /**
+     * =========================================================================================
+     * 【レベル3：関数目次】
+     * [ユーティリティ]
+     * - fetchWithTimeout   : タイムアウト付きのフェッチAPIラッパー
+     * * [初期化・データ取得]
+     * - init               : LIFF初期化と初回の表示モード判定、GAS通信をキックする
+     * - fetchData          : GASから出欠データを取得し、画面状態（未登録/閲覧/編集）を切り替える
+     * * [過去データ閲覧関連] (閲覧モード用)
+     * - initDateDropdowns  : 年・月のプルダウンを初期化する
+     * - updateMondays      : 選択された年月から月曜日のみを抽出しプルダウンを更新する
+     * - setDropdownsToDate : GASから返された基準日をプルダウンにセットする
+     * - fetchPastData      : プルダウンで選択した過去の日付で再度データを取得する
+     * * [UI描画・イベント]
+     * - render             : 取得したデータに基づき、テーブルHTMLを動的に生成する
+     * - toggle             : 出欠ステータス（〇/△/×/-）をローテーションで切り替える
+     * - checkScroll        : テーブルが下までスクロールされたか判定しインジケーターを制御する
+     * * [モーダル操作関連]
+     * - openModal          : コメント入力用のモーダルを開く（編集モード）
+     * - viewModal          : 他人のコメント閲覧用のモーダルを開く（閲覧モード）
+     * - applyComment       : モーダルで入力されたコメントを一時保存する
+     * - closeModal         : モーダルを閉じる
+     * * [保存・連携]
+     * - saveAll            : 変更された出欠データをGASへ一括保存してLIFFを閉じる
+     * - link               : 初回アクセス時に選択した名前とLINE IDを紐づける
+     * =========================================================================================
+     */
 
-    let currentEditFIdx = -1;
-    let currentEditDIdx = -1;
+    // --- グローバル変数 ---
+    let MY_LINE_ID = "";       // LINEプロフィールから取得したUID
+    let IS_VIEW_MODE = false;  // 閲覧モードかどうかのフラグ
+    let DEADLINE_HOUR = 23;    // 回答期限（前日の何時か）
+    let WEEK_LABEL = "";       // 対象週のラベル（例: "2026年 4月1週目"）
+    let days = [];             // 日付オブジェクトの配列
+    let rawData = [];          // 各家庭の出欠データ配列
+    let hasChanges = false;    // 編集による変更があったかのフラグ
+    let isSaving = false;      // 多重保存防止用フラグ
 
+    // モーダル編集時に、どのセルのデータを編集しているかを保持するインデックス
+    let currentEditFIdx = -1;  // familyのインデックス
+    let currentEditDIdx = -1;  // 日付のインデックス
+
+    // UI定義（ステータスのローテーション順とラベル名）
     const UI_CONFIG = {
       signs: ["〇", "△", "×", "-"],
       labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
     };
 
+    /**
+     * 【レベル4: スクロール抑制（バウンス防止）】
+     * テーブルとモーダル以外でスワイプした時に画面全体が引っ張られるブラウザの標準挙動を防ぐ。
+     */
     document.addEventListener('touchmove', function(e) {
       if (e.touches.length > 1) return;
       if (!e.target.closest('.table-wrapper') && !e.target.closest('.modal')) { e.preventDefault(); }
     }, { passive: false });
 
+    // ===================================================================
+    // ユーティリティ
+    // ===================================================================
     async function fetchWithTimeout(url, options = {}, timeout = 15000) {
+      // 通信がスタックするのを防ぐため、AbortControllerを用いて15秒でタイムアウトさせる
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeout);
       try {
@@ -191,17 +259,28 @@
       }
     }
 
+    // ===================================================================
+    // 初期化・データ取得
+    // ===================================================================
     async function init() {
+      // URLパラメータからアクセスモードを取得 (?mode=view なら閲覧モード)
       const params = new URLSearchParams(window.location.search);
       IS_VIEW_MODE = (params.get('mode') === 'view');
+      
+      // 閲覧モードの場合はbodyにクラスを付与し、フッター余白等をCSSで切り替える
       if (IS_VIEW_MODE) document.getElementById("bodyTag").classList.add("view-mode");
 
       try {
+        // LIFF初期化処理
         await liff.init({ liffId: SETTINGS.LIFF_ID });
+        // LINEアプリ外（ブラウザ）などで未ログインの場合はログイン画面へリダイレクト
         if (!liff.isLoggedIn()) { liff.login(); return; }
+        
+        // ユーザー情報を取得
         const profile = liff.getDecodedIDToken();
         MY_LINE_ID = profile.sub;
         
+        // メインデータのフェッチ処理を実行
         await fetchData(); 
       } catch (e) {
         document.getElementById("loading").style.display = "none";
@@ -211,9 +290,11 @@
     }
 
     async function fetchData(retryCount = 0, targetDateStr = null) {
+      // 現在のURL（クエリ除く）を取得。GAS側からリッチメニューの更新指示などに利用。
       const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
-      let url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
       
+      // リクエストURLの構築（キャッシュ回避のためにタイムスタンプvを付与）
+      let url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
       if (targetDateStr) {
         url += `&targetDate=${targetDateStr}`;
       }
@@ -225,10 +306,12 @@
         if (data.status === "error") throw new Error("GAS側エラー: " + data.message);
 
         if (data.data && data.data.title) {
-          document.title = data.data.title;
+          document.title = data.data.title; // 動的タイトル設定
         }
 
+        // --- パターンA: 正常にデータが取得できた場合 ---
         if (data.status === "success") {
+          // 直近に設定されたスケジュールが存在しない場合
           if (data.data.noSchedule) {
             document.getElementById("loading").style.display = "none";
             document.getElementById("main-view").style.display = "flex";
@@ -237,25 +320,25 @@
             return;
           }
 
+          // 取得したデータをグローバル変数に格納
           WEEK_LABEL = data.data.weekLabel;
           days = data.data.dates;
           rawData = data.data.families;
-
           if (data.data.deadlineHour !== undefined) DEADLINE_HOUR = data.data.deadlineHour;
 
+          // 画面表示の切り替え
           document.getElementById("main-view").style.display = "flex";
           
-          // ★修正: 閲覧モードと編集モードで表示するヘッダーを完全に切り分ける
           if (IS_VIEW_MODE) {
+            // 閲覧モードUI: ヘッダータイトルを非表示にし、過去検索プルダウンを表示
             document.getElementById("weekTitle").style.display = "none";
             document.getElementById("past-view-controls").style.display = "flex";
-            if (document.getElementById("sel-year").options.length === 0) {
-              initDateDropdowns();
-            }
-            if (data.data.baseDateStr) {
-              setDropdownsToDate(data.data.baseDateStr);
-            }
+            // プルダウンが未初期化なら生成
+            if (document.getElementById("sel-year").options.length === 0) initDateDropdowns();
+            // GASから返却された表示中の基準日をプルダウンに同期
+            if (data.data.baseDateStr) setDropdownsToDate(data.data.baseDateStr);
           } else {
+            // 編集モードUI: 週のタイトルと、フッターの保存ボタンを表示
             document.getElementById("weekTitle").style.display = "block";
             document.getElementById("weekTitle").innerText = data.data.weekLabel;
             document.getElementById("past-view-controls").style.display = "none";
@@ -263,12 +346,15 @@
           }
 
           document.getElementById("loading").style.display = "none";
-          render();
+          render(); // テーブルの描画
 
+        // --- パターンB: ユーザーのLINE IDが未登録の場合 ---
         } else if (data.status === "unregistered") {
           document.getElementById("loading").style.display = "none";
           document.getElementById("registration-view").style.display = "block";
           document.getElementById("regTitle").innerText = data.data.title || "父兄出欠確認アプリ";
+          
+          // 名簿リストから選択肢を生成
           const select = document.getElementById("name-list");
           select.innerHTML = ""; 
           data.list.forEach(item => {
@@ -280,6 +366,7 @@
         }
 
       } catch (e) {
+        // 通信失敗時は、自動で2回までリトライを実行する
         if (retryCount < 2) {
           await new Promise(resolve => setTimeout(resolve, 500));
           return await fetchData(retryCount + 1, targetDateStr);
@@ -290,23 +377,27 @@
       }
     }
 
+    // ===================================================================
+    // 過去データ閲覧関連 (閲覧モード用)
+    // ===================================================================
     function initDateDropdowns() {
       const selYear = document.getElementById("sel-year");
       const selMonth = document.getElementById("sel-month");
-      const now = new Date();
-      const currentYear = now.getFullYear();
+      const currentYear = new Date().getFullYear();
 
-      // ★修正: 2026年以降のみ選択可能にする
+      // 年のプルダウン生成 (運用開始が2026年と想定し、過去に遡れるようにする)
       let yearHtml = "";
       for (let y = currentYear; y >= 2026; y--) {
         yearHtml += `<option value="${y}">${y}</option>`;
       }
       selYear.innerHTML = yearHtml;
       
+      // 月のプルダウン生成
       let monthHtml = "";
       for(let i=1; i<=12; i++) monthHtml += `<option value="${i}">${i}</option>`;
       selMonth.innerHTML = monthHtml;
       
+      // 年・月が変更されたら、それに連動して「月曜日のリスト」を更新する
       selYear.addEventListener("change", updateMondays);
       selMonth.addEventListener("change", updateMondays);
       updateMondays();
@@ -319,6 +410,7 @@
       
       selMonday.innerHTML = "";
       const daysInMonth = new Date(y, m, 0).getDate(); 
+      // 指定月の全日付を走査し、月曜日(getDay()===1)だけをプルダウンに追加する
       for(let d=1; d<=daysInMonth; d++) {
         const date = new Date(y, m - 1, d);
         if(date.getDay() === 1) { 
@@ -332,11 +424,13 @@
 
     function setDropdownsToDate(dateStr) {
       if (!dateStr) return;
+      // "YYYY-MM-DD"形式から年・月・日を抽出
       const parts = dateStr.split("-");
       const y = parseInt(parts[0]);
       const m = parseInt(parts[1]);
       const d = parseInt(parts[2]);
       
+      // プルダウンに値をセットして、表示を同期させる
       const yearOpt = document.querySelector(`#sel-year option[value='${y}']`);
       if(yearOpt) document.getElementById("sel-year").value = y;
       document.getElementById("sel-month").value = m;
@@ -346,36 +440,45 @@
 
     function fetchPastData() {
       const y = document.getElementById("sel-year").value;
+      // 1桁の月・日を2桁にゼロ埋めする
       const m = String(document.getElementById("sel-month").value).padStart(2, '0');
       const d = String(document.getElementById("sel-monday").value).padStart(2, '0');
       const targetDateStr = `${y}-${m}-${d}`;
       
+      // 表示を一旦ローディングに切り替えて、特定日付でデータを再フェッチ
       document.getElementById("main-view").style.display = "none";
       document.getElementById("loading").style.display = "flex";
       document.getElementById("loadingText").innerText = "データ取得中...";
-      
       fetchData(0, targetDateStr);
     }
 
+    // ===================================================================
+    // UI描画・イベント
+    // ===================================================================
     function render() {
       if (!days || days.length === 0) return;
 
+      // 1. 各日程のステータス集計（参加人数などのカウント）用オブジェクトの初期化
       const totals = days.map(() => {
         let obj = {};
         UI_CONFIG.signs.forEach(s => obj[s] = 0);
         return obj;
       });
 
+      // 2. 取得した全家庭のデータを走査し、記号ごとにカウントアップ
       rawData.forEach(f => {
         f.statuses.forEach((s, i) => {
           if (totals[i].hasOwnProperty(s)) totals[i][s]++;
         });
       });
 
+      // 3. テーブルヘッダーのHTML組み立て
       let html = `<thead><tr><th class="name-col-head">団員父兄</th>`;
       days.forEach((d, i) => {
+        // 曜日テキストに含まれる文字で土・日/祝日を判定し、色を変えるクラスを付与
         let cls = (d.label.includes("日") || d.label.includes("祝")) ? "sun" : d.label.includes("土") ? "sat" : "";
         html += `<th class="${cls}">${d.label}<div class="count-box">`;
+        // 集計結果の出力
         UI_CONFIG.signs.forEach(s => {
           html += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span>${totals[i][s]}</span></div>`;
         });
@@ -383,31 +486,37 @@
       });
       html += "</tr></thead><tbody>";
 
+      // 4. テーブルボディ（各家庭の出欠データ）のHTML組み立て
       rawData.forEach((f, fIdx) => {
-        // 閲覧モードの場合は、自分であっても背景色をハイライトしないようにする(お好みで戻せます)
+        // 自分自身のデータ行かどうか判定（編集モードのみ自身の行をハイライト）
         const isMe = (!IS_VIEW_MODE && MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
         const rowClass = isMe ? 'my-row' : 'other-row';
         html += `<tr class="${rowClass}"><td class="name-cell">${f.name}</td>`;
         
+        // メインのステータス（〇△×）出力
         f.statuses.forEach((s, dIdx) => {
-          const isLocked = days[dIdx].isLocked;
-          const canEdit = !IS_VIEW_MODE && isMe;
+          const isLocked = days[dIdx].isLocked; // GAS側で判定されたロックフラグ
+          const canEdit = !IS_VIEW_MODE && isMe; // 自分自身、かつ編集モードの時のみ編集可能
           const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
           const lockClass = isLocked ? "locked" : "";
           html += `<td class="status-cell status-${s} ${lockClass}" ${clickAttr}>${s}</td>`;
         });
         html += "</tr>";
 
+        // 5. コメント行の出力（自分自身の行、または既にコメントが存在する場合に表示）
         const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
         if (isMe || hasComment) {
           html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label"><span class="com-label-top">┗ 💬</span><span class="com-label-bottom">コメント</span></td>`;
           f.commentStatus.forEach((c, dIdx) => {
             const isLocked = days[dIdx].isLocked;
             const lockClass = isLocked ? "locked" : "";
+            
             if (isMe && !IS_VIEW_MODE) {
+              // 自分の場合は入力用モーダルを開くボタンを表示
               const icon = c ? '💬' : '＋';
               html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
             } else {
+              // 他人の場合はコメント内容（アイコン）を表示して閲覧モーダルを開く
               const displayTxt = c ? `<span class="com-text" onclick="viewModal('${f.name}', '${days[dIdx].label}', '${c}')">💬</span>` : '-';
               html += `<td class="${lockClass}"><span class="com-icon">${displayTxt}</span></td>`;
             }
@@ -417,48 +526,87 @@
       });
 
       document.getElementById("mainTable").innerHTML = html + "</tbody>";
+      
+      // 描画後、少し待ってからスクロール可能領域を判定する（DOM更新完了を担保するため）
       setTimeout(checkScroll, 300);
     }
 
     function toggle(fIdx, dIdx) {
+      // 期限切れチェック
       if (days[dIdx].isLocked) {
         alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません"); return;
       }
+      // UI_CONFIG内の配列順にステータスを進める（最後まできたら最初に戻る）
       const signs = UI_CONFIG.signs;
       const current = rawData[fIdx].statuses[dIdx];
       rawData[fIdx].statuses[dIdx] = signs[(signs.indexOf(current) + 1) % signs.length];
-      hasChanges = true;
-      render();
+      
+      hasChanges = true; // 変更フラグを立てる
+      render(); // 変更後の状態で再描画
     }
 
+    function checkScroll() {
+      // テーブルが下部までスクロールされたかを判定し「▼下に続きがあります」インジケーターを制御
+      const area = document.getElementById("content-area");
+      const indicator = document.getElementById("scrollIndicator");
+      if (!area || !indicator) return;
+      
+      const scrollH = Math.round(area.scrollHeight);
+      const clientH = Math.round(area.clientHeight);
+      const scrollT = Math.round(area.scrollTop);
+      
+      const canScroll = scrollH > (clientH + 3); // スクロールバーが存在するか
+      const isBottom = (scrollH - scrollT) <= (clientH + 10); // 一番下まで到達したか（誤差10px許容）
+      
+      if (canScroll && !isBottom) {
+        indicator.style.display = "block";
+      } else {
+        indicator.style.display = "none";
+      }
+    }
+
+    // スクロール時および画面リサイズ時にインジケーター表示判定を実行
+    document.getElementById("content-area").addEventListener("scroll", checkScroll);
+    window.addEventListener("resize", checkScroll);
+
+    // ===================================================================
+    // モーダル操作関連
+    // ===================================================================
     function openModal(fIdx, dIdx) {
       if (days[dIdx].isLocked) { alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません"); return; }
       currentEditFIdx = fIdx; currentEditDIdx = dIdx;
+      
+      // モーダル内容の初期化
       document.getElementById("modalTitle").innerText = days[dIdx].label + " のコメント";
       document.getElementById("modalDesc").innerText = "コメントを入力 (例: 17:30から参加)";
       document.getElementById("modalDesc").style.display = "block";
       document.getElementById("modalInput").value = rawData[fIdx].commentStatus[dIdx] || "";
-      document.getElementById("modalInput").readOnly = false;
+      document.getElementById("modalInput").readOnly = false; // 編集可能に
       document.getElementById("modalApplyBtn").style.display = "block";
       document.getElementById("commentModal").style.display = "flex";
+      
+      // 少し待ってからテキストボックスにフォーカスを当てる（モバイルキーボード表示補助）
       setTimeout(() => document.getElementById("modalInput").focus(), 100);
     }
 
     function viewModal(name, dateLabel, text) {
+      // 他人のコメントや閲覧モード時の専用表示
       document.getElementById("modalTitle").innerText = `${name} ${dateLabel} のコメント`;
       document.getElementById("modalDesc").style.display = "none";
       document.getElementById("modalInput").value = text;
-      document.getElementById("modalInput").readOnly = true;
-      document.getElementById("modalApplyBtn").style.display = "none";
+      document.getElementById("modalInput").readOnly = true; // 編集不可に
+      document.getElementById("modalApplyBtn").style.display = "none"; // 決定ボタン非表示
       document.getElementById("commentModal").style.display = "flex";
     }
 
     function applyComment() {
       if (currentEditFIdx === -1) return;
       const val = document.getElementById("modalInput").value;
+      // グローバルデータに反映し、変更フラグを立てて再描画
       rawData[currentEditFIdx].commentStatus[currentEditDIdx] = val;
       hasChanges = true;
-      closeModal(); render();
+      closeModal(); 
+      render();
     }
 
     function closeModal() {
@@ -466,15 +614,21 @@
       currentEditFIdx = -1; currentEditDIdx = -1;
     }
 
+    // ===================================================================
+    // 保存・連携（GASとの書き込み通信）
+    // ===================================================================
     async function saveAll() {
+      // 変更がなければ保存処理をスキップしてLIFFを閉じる
       if (!hasChanges) { liff.closeWindow(); return; }
-      if (isSaving) return;
+      if (isSaving) return; // 二重送信防止
       isSaving = true;
 
+      // 保存中のUI表示
       const loader = document.getElementById("loading");
       document.getElementById("loadingText").innerText = "保存中...";
       loader.style.display = "flex";
 
+      // 送信用のJSONペイロードを構築（自分自身のデータだけを抽出）
       const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
       const payload = days.map((d, i) => ({
         weekLabel: WEEK_LABEL,
@@ -485,20 +639,25 @@
       }));
 
       try {
+        // GASのupdate_allアクションにPOST(現状はGETのクエリパラメータ)で送信
         const res = await fetchWithTimeout(`${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&payload=${encodeURIComponent(JSON.stringify(payload))}`);
         if (!res.ok) throw new Error("HTTP Error");
+        // 送信完了後、少し待ってからLIFFウィンドウを閉じる
         setTimeout(() => { liff.closeWindow(); }, 500);
       } catch (e) {
         alert("保存エラーが発生しました\n\n通信環境を確認して再度お試しください");
-        loader.style.display = "none"; isSaving = false;
+        loader.style.display = "none"; 
+        isSaving = false;
       }
     }
 
     async function link() {
+      // 初回登録画面で選択された名簿IDを取得し、GASへ紐付けリクエストを送信
       const sid = document.getElementById("name-list").value;
       document.getElementById("loading").style.display = "flex";
       try {
         await fetchWithTimeout(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}`);
+        // 紐付け完了後、画面を再読み込みして通常画面へ遷移
         window.location.reload();
       } catch (e) {
         alert("登録エラーが発生しました");
@@ -506,29 +665,8 @@
       }
     }
 
-    function checkScroll() {
-      const area = document.getElementById("content-area");
-      const indicator = document.getElementById("scrollIndicator");
-      if (!area || !indicator) return;
-      const scrollH = Math.round(area.scrollHeight);
-      const clientH = Math.round(area.clientHeight);
-      const scrollT = Math.round(area.scrollTop);
-      
-      const canScroll = scrollH > (clientH + 3);
-      const isBottom = (scrollH - scrollT) <= (clientH + 10);
-      
-      if (canScroll && !isBottom) {
-        indicator.style.display = "block";
-      } else {
-        indicator.style.display = "none";
-      }
-    }
-
-    document.getElementById("content-area").addEventListener("scroll", checkScroll);
-    window.addEventListener("resize", checkScroll);
-    
+    // DOM読み込み完了時にinit関数を実行
     window.onload = init;
   </script>
 </body>
 </html>
-
