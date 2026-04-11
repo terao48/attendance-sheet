@@ -12,7 +12,6 @@
     :root {
       --main-green: #27ae60; --sat-blue: #2980b9; --sun-red: #d35400;
       --bg-light: #f4f7f8; --my-row-bg: #fffbe6; 
-      /* ★修正2: 名前列の幅を全角1文字分（約16px）減らす */
       --name-col-width: 60px; 
     }
     
@@ -37,10 +36,26 @@
       padding: 2px 4px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; height: 36px; box-sizing: border-box;
     }
     .past-controls span { font-size: 14px; font-weight: bold; margin: 0 3px; color: #555; }
+    
     .btn-show-past {
       padding: 0 16px; margin-left: 5px; background: var(--main-green); color: white; 
       border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
       font-size: 18px; height: 36px; line-height: 1; display: flex; align-items: center; justify-content: center;
+      transition: all 0.3s ease; /* 追加: 変化をなめらかに */
+    }
+
+    /* 追加: 日付選択後に付与するクラス */
+    .btn-highlight {
+      background: #2ecc71 !important; /* 少し明るい緑に */
+      transform: translateY(-3px);   /* 上に少し浮かす */
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2); /* 影を強くして浮遊感を出す */
+      animation: pulse-green 1.5s infinite;  /* 軽く点滅させて注意を引く */
+    }
+
+    @keyframes pulse-green {
+      0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
     }
 
     /* テーブル・グリッド関連 */
@@ -102,25 +117,6 @@
     .view-mode .table-wrapper { margin-bottom: 0; }
     .view-mode td { height: 34px; }
     .no-schedule-msg { padding: 40px 20px; text-align: center; font-weight: bold; color: #666; }
-
-    /* --- 追加：表示ボタンの強調スタイル --- */
-    .btn-show-past {
-      transition: all 0.3s ease; /* 変化をなめらかに */
-    }
-
-    /* 日付選択後に付与するクラス */
-    .btn-highlight {
-      background: #2ecc71 !important; /* 少し明るい緑に */
-      transform: translateY(-3px);   /* 上に少し浮かす */
-      box-shadow: 0 6px 12px rgba(0,0,0,0.2); /* 影を強くして浮遊感を出す */
-      animation: pulse-green 1.5s infinite;  /* 軽く点滅させて注意を引く */
-    }
-
-    @keyframes pulse-green {
-      0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
-      70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
-    }
     
     /* スクロールインジケーター（下部案内） */
     .scroll-indicator {
@@ -296,12 +292,10 @@
             document.getElementById("past-view-controls").style.display = "none";
             document.getElementById("footer").style.display = "block";
 
-            // ★修正3: 本日の日付を取得して週ラベルの右側に表示（編集モードのみ）
             const now = new Date();
             const weekStrs = ["日", "月", "火", "水", "木", "金", "土"];
             const todayStr = `${now.getMonth() + 1}/${now.getDate()}(${weekStrs[now.getDay()]})`;
             
-            // デザインのバランスを取るため、日付部分は少し小さくして配置します
             document.getElementById("weekTitle").innerHTML = `${data.data.weekLabel} <span style="font-size: 14px; color: #555; margin-left: 8px;">本日：${todayStr}</span>`;
           }
 
@@ -337,6 +331,7 @@
     function initDateDropdowns() {
       const selYear = document.getElementById("sel-year");
       const selMonth = document.getElementById("sel-month");
+      const selMonday = document.getElementById("sel-monday"); // 変更対象を追加
       const currentYear = new Date().getFullYear();
 
       let yearHtml = "";
@@ -356,7 +351,7 @@
       selYear.addEventListener("change", () => { updateMondays(); btn.classList.add("btn-highlight"); });
       selMonth.addEventListener("change", () => { updateMondays(); btn.classList.add("btn-highlight"); });
       selMonday.addEventListener("change", () => { btn.classList.add("btn-highlight"); });
-      
+
       updateMondays();
     }
 
@@ -395,7 +390,7 @@
     function fetchPastData() {
       // 追加：ボタンの強調を解除して元に戻す
       document.querySelector(".btn-show-past").classList.remove("btn-highlight");
-      
+
       const y = document.getElementById("sel-year").value;
       const m = String(document.getElementById("sel-month").value).padStart(2, '0');
       const d = String(document.getElementById("sel-monday").value).padStart(2, '0');
@@ -422,7 +417,6 @@
         });
       });
 
-      // ★修正1: ヘッダー行を「団員」と「父兄」で改行させる
       let html = `<thead><tr><th class="name-col-head">団員<br>父兄</th>`;
       
       days.forEach((d, i) => {
