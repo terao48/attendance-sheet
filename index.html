@@ -215,20 +215,18 @@
       labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
     };
   
-// --- 修正：表の実際の高さを基準に、正確な終端までスクロールさせる ---
 function slowScrollToBottom(element, duration) {
-  const table = element.querySelector('table'); // 内部のテーブル要素を直接参照
+  const table = element.querySelector('table');
   const start = element.scrollTop;
-  
-  // 【重要】scrollHeightではなく、tableのoffsetHeight（純粋な表の高さ）を使う
-  // これにより、余白（margin）分を無視して「表の最後」でピタッと止まります
   const tableHeight = table.offsetHeight;
   const target = tableHeight - element.clientHeight;
-  
   const distance = target - start;
-  
-  // すでに下端にいる場合は何もしない
+
   if (distance <= 0) return;
+
+  // --- 修正ポイント：CSSの挙動を一時的に「auto」へ固定する ---
+  const originalStyle = element.style.scrollBehavior;
+  element.style.scrollBehavior = 'auto'; 
 
   let startTime = null;
 
@@ -242,7 +240,9 @@ function slowScrollToBottom(element, duration) {
     if (timeElapsed < duration) {
       requestAnimationFrame(animation);
     } else {
-      element.scrollTop = target; // 最後に正確な位置へ補正
+      element.scrollTop = target;
+      // アニメーションが終わったら元のスタイルに戻す
+      element.style.scrollBehavior = originalStyle;
     }
   }
 
