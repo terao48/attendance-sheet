@@ -215,10 +215,34 @@
       labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
     };
   
-    // スクロールインジケーターにクリックイベントを追加
+    // --- 修正：ゆっくり＆動的にスクロールさせる関数 ---
+    function slowScrollToBottom(element, duration) {
+      const start = element.scrollTop;
+      const target = element.scrollHeight - element.clientHeight;
+      const distance = target - start;
+      let startTime = null;
+
+      function animation(currentTime) {
+        if (startTime === null) startTime = currentTime;
+        const timeElapsed = currentTime - startTime;
+        const run = easeInOutQuad(timeElapsed, start, distance, duration);
+        element.scrollTop = run;
+        if (timeElapsed < duration) requestAnimationFrame(animation);
+      }
+
+      function easeInOutQuad(t, b, c, d) {
+        t /= d / 2;
+        if (t < 1) return c / 2 * t * t + b;
+        t--;
+        return -c / 2 * (t * (t - 2) - 1) + b;
+      }
+      requestAnimationFrame(animation);
+    }
+
+    // スクロールインジケーターにゆっくりスクロールを適用
     document.getElementById("scrollIndicator").onclick = function() {
       const area = document.getElementById("content-area");
-      area.scrollBy({ top: 300, behavior: 'smooth' });
+      slowScrollToBottom(area, 1500); // 1.5秒かけてスクロール
     };
     
     document.addEventListener('touchmove', function(e) {
