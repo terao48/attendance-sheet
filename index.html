@@ -258,7 +258,7 @@ function slowScrollToBottom(element, duration) {
     // スクロールインジケーターにゆっくりスクロールを適用
     document.getElementById("scrollIndicator").onclick = function() {
       const area = document.getElementById("content-area");
-      slowScrollToBottom(area, 500); // 0.5秒かけてスクロール
+      slowScrollToBottom(area, 100); // 0.1秒かけてスクロール
     };
     
     document.addEventListener('touchmove', function(e) {
