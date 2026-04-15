@@ -546,9 +546,9 @@
       const selMonday = document.getElementById("sel-monday");
       const currentYear = new Date().getFullYear();
 
-      // 年の生成（今年〜2026年まで）
       let yearHtml = "";
-      for (let y = currentYear; y >= 2026; y--) {
+      // ★修正箇所：現在の年＋1年（来年）までをデフォルトで選択肢に含める
+      for (let y = currentYear + 1; y >= 2026; y--) {
         yearHtml += `<option value="${y}">${y}</option>`;
       }
       selYear.innerHTML = yearHtml;
@@ -597,17 +597,21 @@
     function setDropdownsToDate(dateStr) {
       if (!dateStr) return;
       const parts = dateStr.split("-");
-      const y = parseInt(parts[0]);
-      const m = parseInt(parts[1]);
-      const d = parseInt(parts[2]);
+      const y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
       
-      const yearOpt = document.querySelector(`#sel-year option[value='${y}']`);
-      if(yearOpt) document.getElementById("sel-year").value = y;
+      // ★安全装置追加：もしドロップダウンのリストに無い未来の「年」がGASから指定された場合、自動で選択肢を追加する
+      if (!document.querySelector(`#sel-year option[value='${y}']`)) {
+        const opt = document.createElement("option");
+        opt.value = y; opt.text = y;
+        // 一番上に新しい年を追加
+        document.getElementById("sel-year").insertAdjacentElement('afterbegin', opt);
+      }
+      
+      document.getElementById("sel-year").value = y;
       document.getElementById("sel-month").value = m;
       updateMondays(); 
       document.getElementById("sel-monday").value = d;
     }
-
     /**
      * ドロップダウンで指定した日付のデータをサーバーから取得します。
      */
