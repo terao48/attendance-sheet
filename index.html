@@ -547,8 +547,8 @@
       const currentYear = new Date().getFullYear();
 
       let yearHtml = "";
-      // ★修正箇所：現在の年＋1年（来年）までをデフォルトで選択肢に含める
-      for (let y = currentYear + 1; y >= 2026; y--) {
+      // ★修正箇所：現在の年±1年までをデフォルトで選択肢に含める
+      for (let y = currentYear + 1; y >= currentYear - 1; y--) {
         yearHtml += `<option value="${y}">${y}</option>`;
       }
       selYear.innerHTML = yearHtml;
