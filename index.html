@@ -544,11 +544,19 @@
       const selYear = document.getElementById("sel-year");
       const selMonth = document.getElementById("sel-month");
       const selMonday = document.getElementById("sel-monday");
-      const currentYear = new Date().getFullYear();
+      
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth(); // JavaScriptの月は0〜11（11が12月）
+
+      // 【条件2, 3】12月に入ったら翌年のスケジュールが入ることを想定し、表示リストに翌年を追加
+      const maxYear = (currentMonth === 11) ? currentYear + 1 : currentYear;
+
+      // 【条件1, 4】1年前までを表示するが、2026年より過去には遡らない
+      const minYear = Math.max(2026, currentYear - 1);
 
       let yearHtml = "";
-      // ★修正箇所：現在の年±1年までをデフォルトで選択肢に含める
-      for (let y = currentYear + 1; y >= currentYear - 1; y--) {
+      for (let y = maxYear; y >= minYear; y--) {
         yearHtml += `<option value="${y}">${y}</option>`;
       }
       selYear.innerHTML = yearHtml;
