@@ -8,39 +8,43 @@
   
   <style>
     /* ===================================================
-       1. 全体設定・ルート変数
+       1. 全体設定・ルート変数  /* GitHub HTML v8.9 */
     =================================================== */
+    /* アプリ全体で使い回すテーマカラーや基準サイズを定義します */
     :root {
-      --main-green: #27ae60;
-      --sat-blue: #2980b9;
-      --sun-red: #d35400;
-      --bg-light: #f4f7f8;
-      --my-row-bg: #fffbe6;
-      --name-col-width: 60px;
+      --main-green: #27ae60;    /* メインカラー（決定、参加など） */
+      --sat-blue: #2980b9;      /* 土曜日の背景色 */
+      --sun-red: #d35400;       /* 日・祝日の背景色 */
+      --bg-light: #f4f7f8;      /* アプリ全体の背景色（薄いグレー） */
+      --my-row-bg: #fffbe6;     /* ログインしている本人の行の背景色（薄い黄色） */
+      --name-col-width: 60px;   /* 左端の名前列の固定幅 */
     }
     
+    /* ベースレイアウト: 画面を固定し、意図しないブラウザスクロール（引っ張り）を抑制します */
     html, body {
       position: fixed; 
       width: 100%; 
       height: 100%;
       overflow: hidden; 
-      overscroll-behavior: none;
+      overscroll-behavior: none; /* 下に引っ張ってリロードされるのを防ぐ */
       font-family: sans-serif; 
       margin: 0; 
       background: var(--bg-light); 
       color: #333;
     }
 
+    /* メインのコンテナ: 画面の高さ（100dvh）にぴったり合わせ、内部でレイアウトを組みます */
     .container {
       padding: 4px; 
       display: flex; 
       flex-direction: column;
       height: 100%; 
-      height: 100dvh; 
+      height: 100dvh; /* スマホブラウザのUIを考慮した動的な高さ設定 */
       overflow: hidden; 
       box-sizing: border-box;
     }
 
+    /* 上部のタイトル（〇月〇日週）用スタイル */
     h3 { 
       text-align: center; 
       font-size: 18px; 
@@ -51,8 +55,9 @@
     /* ===================================================
        2. 過去データ閲覧モード用 UI
     =================================================== */
+    /* 過去の出欠データを閲覧するためのドロップダウン等のコンテナ */
     .past-controls {
-      display: none;
+      display: none; /* デフォルトは非表示。閲覧モード時のみ表示 */
       align-items: center; 
       justify-content: center; 
       padding: 6px; 
@@ -61,6 +66,7 @@
       margin-bottom: 8px; 
       box-shadow: 0 1px 4px rgba(0,0,0,0.1);
     }
+    /* 年・月・日の選択プルダウン */
     .past-controls select { 
       padding: 2px 4px; 
       font-size: 15px; 
@@ -69,6 +75,7 @@
       height: 36px; 
       box-sizing: border-box;
     }
+    /* プルダウン間の「年」「月」などの文字 */
     .past-controls span { 
       font-size: 14px; 
       font-weight: bold; 
@@ -76,6 +83,7 @@
       color: #555; 
     }
     
+    /* 過去データを取得する「表示」ボタン */
     .btn-show-past {
       padding: 0 16px; 
       margin-left: 5px; 
@@ -94,6 +102,7 @@
       transition: all 0.3s ease;
     }
 
+    /* 年月変更時、「表示」ボタンを光らせてタップを促すアニメーション */
     .btn-highlight {
       background: #2ecc71 !important;
       transform: translateY(-3px);
@@ -109,14 +118,15 @@
     /* ===================================================
        3. 表（テーブル）のレイアウトとスクロール設定
     =================================================== */
+    /* 表全体を囲むラッパー。上下左右のスクロールを担う */
     .table-wrapper {
-      flex: 1; 
-      overflow-y: auto; 
-      overflow-x: auto;
+      flex: 1; /* 余った高さをすべてこのエリアに割り当て */
+      overflow-y: auto; /* 縦スクロール許可 */
+      overflow-x: auto; /* 横スクロール許可 */
       border-radius: 8px; 
       background: white; 
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 65px;
+      margin-bottom: 65px; /* 下部の保存ボタンが被らないように余白を確保 */
       position: relative;
     }
     table { 
@@ -126,17 +136,20 @@
       min-width: 100%; 
     }
 
+    /* ヘッダー行（日付）を上部に固定 */
     thead { position: sticky; top: 0; z-index: 10; }
     th { background: var(--main-green); color: white; padding: 4px 0; font-size: 11px; border: none; font-weight: bold; }
-    th.sat { background: var(--sat-blue); }
-    th.sun { background: var(--sun-red); }
+    th.sat { background: var(--sat-blue); } /* 土曜日の色 */
+    th.sun { background: var(--sun-red); }  /* 日曜・祝日の色 */
 
     td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
-    .other-row td { height: 34px !important; }
+    .other-row td { height: 34px !important; } /* 他人の行は少し高さを狭くする */
 
+    /* 日付下の「〇参加：3」のような集計数の表示エリア */
     .count-box { font-size: 10px; margin-top: 3px; padding: 2px 4px; background: rgba(0,0,0,0.15); font-weight: normal; line-height: 1.3; }
-    .count-row { display: flex; justify-content: space-between; }
+    .count-row { display: flex; justify-content: space-between; } /* 記号と数字を左右に散らす */
 
+    /* 左端の名前列をスクロール時に左側に固定 */
     .name-col-head, .name-cell {
       position: sticky; 
       left: 0; 
@@ -149,30 +162,39 @@
       word-break: break-all; z-index: 5;
     }
 
+    /* 本人の行を目立たせる（変数で定義した黄色） */
     .my-row, .my-row .name-cell { background-color: var(--my-row-bg) !important; }
 
     /* ===================================================
        4. セルの状態（ステータス）とコメント行
     =================================================== */
+    /* 〇△×のタップ領域とフォントサイズ */
     .status-cell { font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    /* 各ステータスの文字色定義 */
     .status-〇 { color: var(--main-green); font-weight: bold; }
     .status-△ { color: #f39c12; font-weight: bold; }
     .status-× { color: #7f8c8d; font-weight: bold; }
     .status-- { color: #ccc; }
     
+    /* 期限切れなどで変更不可のセル（グレーアウト） */
     .locked { background-color: #f2f2f2 !important; color: #bbb !important; cursor: not-allowed; }
 
-    .com-row td { height: 34px !important; }
+    /* コメント入力行のスタイル */
+    .com-row td { height: 34px !important; } /* コメント行は少し低めに */
     .com-row { background: #fff; }
+    /* 「┗ 💬 コメント」というラベル部分 */
     .com-label { font-size: 10px; color: #888; padding: 2px 6px; border-right: 2px solid #ccc; font-weight: normal; line-height: 1.2; box-sizing: border-box; }
     .com-label-top { text-align: left; display: block; margin-bottom: 2px; }
     .com-label-bottom { text-align: right; display: block; }
+    /* コメント入力用の吹き出しアイコンまたは＋ボタン */
     .com-icon { font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+    /* 他人のコメントの一部を表示するテキスト（長すぎたら...で省略） */
     .com-text { font-size: 10px; color: #666; cursor: pointer; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40px; }
 
     /* ===================================================
-       5. 汎用 UI コンポーネント（フッター、ローディング等）
+       5. 汎用 UI コンポーネント
     =================================================== */
+    /* 画面下部に固定される「保存して閉じる」ボタンのエリア */
     .footer-bar { 
       position: fixed; bottom: 0; left: 0; width: 100%; 
       padding: 10px; background: white; border-top: 1px solid #ddd; 
@@ -184,11 +206,13 @@
       font-size: 16px; font-weight: bold; cursor: pointer; 
     }
     
+    /* データ取得時や保存時に画面全体を覆うローディング画面 */
     #loading { 
       position: fixed; top:0; left:0; width:100%; height:100%; 
       background:rgba(255,255,255,0.9); display:flex; flex-direction:column; 
       align-items:center; justify-content:center; z-index:9999; 
     }
+    /* くるくる回るスピナーのアニメーション */
     .spinner { 
       width: 40px; height: 40px; border: 4px solid #ddd; 
       border-top: 4px solid var(--main-green); border-radius: 50%; 
@@ -196,31 +220,40 @@
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+    /* 下にまだデータがあることを知らせる「▼ 下に続きがあります」インジケーター */
     .scroll-indicator {
       position: fixed; bottom: 75px; left: 50%; transform: translateX(-50%);
       background: rgba(0, 0, 0, 0.7); color: white; padding: 6px 16px; border-radius: 20px;
       font-size: 12px; font-weight: bold; display: none; z-index: 1000;
       pointer-events: auto; cursor: pointer; -webkit-tap-highlight-color: transparent;
-      animation: bounce 1.5s infinite;
+      animation: bounce 1.5s infinite; /* 上下にフワフワ動くアニメーション */
     }
     @keyframes bounce { 0%, 100% { bottom: 75px; } 50% { bottom: 65px; } }
     
-    .view-mode .table-wrapper { margin-bottom: 0; }
-    .view-mode td { height: 34px; }
-    .view-mode .scroll-indicator { bottom: 20px; }
+    /* 過去データ閲覧モード時の専用スタイル調整 */
+    .view-mode .table-wrapper { margin-bottom: 0; } /* 保存ボタンがないので下部余白をなくす */
+    .view-mode td { height: 34px; } /* 閲覧時はタップしやすさを考慮しなくて良いので行を詰める */
+    .view-mode .scroll-indicator { bottom: 20px; } /* 保存ボタンがない分、インジケーターを下に下げる */
+    
+    /* 対象データが存在しない場合のメッセージ用スタイル */
     .no-schedule-msg { padding: 40px 20px; text-align: center; font-weight: bold; color: #666; }
 
     /* ===================================================
-       6. モーダルウィンドウ（コメント入力画面）
+       6. モーダルウィンドウ（コメント入力・閲覧画面）
     =================================================== */
+    /* 背景の黒い半透明オーバーレイ */
     .modal { 
       position: fixed; top:0; left:0; width:100%; height:100%; 
       background:rgba(0,0,0,0.6); display:none; align-items:center; 
       justify-content:center; z-index:2000; 
     }
+    /* モーダル本体の白いボックス */
     .modal-box { background:white; width:85%; max-width:400px; border-radius:8px; padding:20px; box-sizing:border-box; }
+    /* 「〇月〇日のコメント」などのタイトル部分 */
     .modal-title { font-weight:bold; margin-bottom:10px; font-size:14px; border-bottom: 2px solid var(--main-green); padding-bottom: 5px; }
+    /* テキスト入力欄 */
     .modal-input { width:100%; padding:10px; font-size:14px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; margin-bottom:15px; }
+    /* キャンセル・決定ボタンを横並びにするコンテナ */
     .modal-btns { display:flex; gap:10px; }
     .modal-btn { flex:1; padding:10px; border:none; border-radius:4px; font-weight:bold; cursor:pointer; }
   </style>
@@ -266,8 +299,8 @@
   <div id="commentModal" class="modal">
     <div class="modal-box">
       <div id="modalTitle" class="modal-title"></div>
-      <p id="modalDesc" style="font-size:11px; color:#666; margin:0 0 5px 0;"></p>
-      <input type="text" id="modalInput" class="modal-input" placeholder="特になし">
+      <p id="modalDesc" style="font-size:12px; color:#666; margin-bottom:5px;"></p>
+      <input type="text" id="modalInput" class="modal-input" placeholder="入力してください">
       <div class="modal-btns">
         <button class="modal-btn" style="background:#eee; color:#333;" onclick="closeModal()">キャンセル</button>
         <button id="modalApplyBtn" class="modal-btn" style="background:var(--main-green); color:white;" onclick="applyComment()">決定</button>
@@ -276,76 +309,67 @@
   </div>
 
   <script>
-    /**
-     * ==============================================================================
-     * [Level 1] 定数・全体変数定義
-     * ==============================================================================
-     * アプリケーション全体で使用する設定値や状態管理フラグを定義します。
-     */
-    // [Level 4] GASのURLとLIFF IDの設定
+    /* ===================================================
+       定数・グローバル変数定義
+    =================================================== */
+    // GASのウェブアプリURLとLINEログイン用LIFF IDの設定
     const SETTINGS = {
       GAS_URL: "https://script.google.com/macros/s/AKfycbz4M2wVSJmz1WwE5Aevak9JN0MPZTlbNeYiPDRaFATwtrF2vJdRh2zxIgGnJe05iNoe/exec",
       LIFF_ID: "2009266487-GEiMe9Ei"
     };
 
-    // [Level 4] 記号とラベルのマッピング設定
+    // 出欠記号と、集計行に表示するラベルの対応表
     const UI_CONFIG = {
       signs: ["〇", "△", "×", "-"],
       labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
     };
 
-    let MY_LINE_ID = "";       // [Level 4] LINEユーザーID
-    let IS_VIEW_MODE = false;  // [Level 4] 閲覧モードかどうかのフラグ
-    let DEADLINE_HOUR = 23;    // [Level 4] デフォルトの回答期限（前日23時）
-    let WEEK_LABEL = "";       // [Level 4] 対象週のラベル（例: 2026/04/13〜）
-    let days = [];             // [Level 4] 日付データの配列
-    let rawData = [];          // [Level 4] 取得した全父兄のデータ
-    let hasChanges = false;    // [Level 4] 編集が行われたかどうかのフラグ
-    let isSaving = false;      // [Level 4] 保存処理中かどうかのフラグ
+    let MY_LINE_ID = "";       // ログインしたユーザーのLINE ID
+    let IS_VIEW_MODE = false;  // URLに「mode=view」が含まれているかどうかの判定フラグ
+    let DEADLINE_HOUR = 23;    // デフォルトの回答期限（前日23時を過ぎるとロック）
+    let WEEK_LABEL = "";       // テーブルに紐づく対象週のラベル（保存時に使用）
+    let days = [];             // 取得した日付情報（ラベル、ロック状態など）の配列
+    let rawData = [];          // 取得した全父兄のデータ（ステータス、コメントなど）の配列
+    let hasChanges = false;    // ユーザーが出欠やコメントを変更したかどうかのフラグ
+    let isSaving = false;      // 「保存」ボタンの連打による二重送信を防ぐフラグ
 
-    // [Level 4] 現在編集中のモーダルの対象インデックス
-    let currentEditFIdx = -1;  // 行（父兄）のインデックス
-    let currentEditDIdx = -1;  // 列（日付）のインデックス
+    // 現在モーダルで編集しているセルの位置情報を保持
+    let currentEditFIdx = -1;  // 行（どの父兄か）のインデックス
+    let currentEditDIdx = -1;  // 列（どの日付か）のインデックス
 
 
-    /**
-     * ==============================================================================
-     * [Level 1] 1. 初期化・通信処理
-     * ==============================================================================
-     * アプリの起動、LINEログイン、およびGASとのデータ送受信を行います。
-     */
+    /* ===================================================
+       1. 初期化・通信処理
+    =================================================== */
 
     /**
      * アプリ起動時の初期化処理
-     * * [Level 2] URLパラメータを解析し、LIFFの初期化からデータ取得までの一連のフローを制御します。
+     * URLパラメータの解析、LIFF（LINEログイン）の初期化、GASからの初回データ取得を行います。
      */
     async function init() {
-      // ----------------------------------------------------------------------------
-      // [Level 3] 1. モード判定とUI準備
-      // ----------------------------------------------------------------------------
+      // リッチメニュー等から「?mode=view」で遷移してきたか判定
       const params = new URLSearchParams(window.location.search);
       IS_VIEW_MODE = (params.get('mode') === 'view');
       
+      // 閲覧モードの場合は、CSSで専用レイアウトを適用するためbodyにクラスを追加
       if (IS_VIEW_MODE) {
-        // [Level 4] 閲覧モード専用のCSSクラスを付与
         document.getElementById("bodyTag").classList.add("view-mode");
       }
 
-      // ----------------------------------------------------------------------------
-      // [Level 3] 2. LIFF認証とデータフェッチ
-      // ----------------------------------------------------------------------------
+      // LIFFの初期化処理
       try {
         await liff.init({ liffId: SETTINGS.LIFF_ID });
-        // [Level 4] 未ログインの場合はログイン画面へリダイレクト
+        // 未ログイン（LINE外のブラウザなどで開いた場合など）はLINEログイン画面へ促す
         if (!liff.isLoggedIn()) { 
           liff.login(); 
           return; 
         }
         
+        // ログイン成功後、プロフィールからLINEのユーザーID（Uxxxx）を取得
         const profile = liff.getDecodedIDToken();
         MY_LINE_ID = profile.sub;
         
-        // [Level 4] 認証成功後、GASからデータを取得
+        // GASへデータを要求
         await fetchData(); 
       } catch (e) {
         document.getElementById("loading").style.display = "none";
@@ -356,11 +380,7 @@
 
     /**
      * タイムアウト付きFetch通信
-     * * [Level 2] 通信がフリーズするのを防ぐため、指定時間で通信を強制終了します。
-     * @param {string} url - リクエストURL
-     * @param {Object} options - fetchオプション
-     * @param {number} timeout - タイムアウト時間（ミリ秒）
-     * @returns {Promise<Response>}
+     * 電波が悪い場所などで通信が永久にフリーズするのを防ぐため、指定秒数で強制終了します。
      */
     async function fetchWithTimeout(url, options = {}, timeout = 15000) {
       const controller = new AbortController();
@@ -378,13 +398,15 @@
 
     /**
      * GASからの出欠データ取得
-     * * [Level 2] メインデータ取得処理。失敗時の自動リトライ機能と、状況に応じた画面遷移を含みます。
-     * @param {number} retryCount - リトライ回数（再帰用）
-     * @param {string|null} targetDateStr - 過去データ取得時の基準日
+     * メインデータの取得処理です。失敗時の自動リトライ機能と、取得結果に応じた画面切り替えを行います。
+     * @param {number} retryCount - エラー時の再試行回数
+     * @param {string} targetDateStr - 過去データ閲覧時に指定する日付（YYYY-MM-DD）
      */
     async function fetchData(retryCount = 0, targetDateStr = null) {
+      // GASへ渡すURLパラメータを構築。閲覧モードかどうかも伝える。
       const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
       let url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
+      // 過去データ指定があれば追加
       if (targetDateStr) url += `&targetDate=${targetDateStr}`;
 
       try {
@@ -392,18 +414,17 @@
         if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
         
         const data = await res.json();
+        // サーバー側の明示的なエラー（シートが見つからない等）をキャッチ
         if (data.status === "error") throw new Error("GAS側エラー: " + data.message);
 
-        // [Level 4] ページタイトル（ブラウザタブ）の動的更新
+        // ページタイトル（ブラウザのタブ名）を動的に更新
         if (data.data && data.data.title) {
           document.title = data.data.title;
         }
 
-        // ----------------------------------------------------------------------------
-        // [Level 3] 1. データ取得成功時の処理
-        // ----------------------------------------------------------------------------
+        // --- 1. データ取得成功（既存ユーザー）の処理 ---
         if (data.status === "success") {
-          // [Level 4] スケジュールが存在しない場合のUI表示
+          // 指定した期間に有効なスケジュールデータが存在しない場合
           if (data.data.noSchedule) {
             document.getElementById("loading").style.display = "none";
             document.getElementById("main-view").style.display = "flex";
@@ -412,23 +433,25 @@
             return;
           }
 
-          // [Level 4] 取得データをグローバル変数に格納
+          // 取得した各種データをグローバル変数に格納
           WEEK_LABEL = data.data.weekLabel;
           days = data.data.dates;
           rawData = data.data.families;
           if (data.data.deadlineHour !== undefined) DEADLINE_HOUR = data.data.deadlineHour;
 
-          // メインUIの表示切り替え
+          // メインUIを表示
           document.getElementById("main-view").style.display = "flex";
           
           if (IS_VIEW_MODE) {
-            // [Level 4] 閲覧モード用：日付コントロールバーの表示とドロップダウン初期化
+            // 閲覧モード用：タイトルを隠し、日付選択ドロップダウンを表示
             document.getElementById("weekTitle").style.display = "none";
             document.getElementById("past-view-controls").style.display = "flex";
+            // ドロップダウンが未生成なら初期化
             if (document.getElementById("sel-year").options.length === 0) initDateDropdowns();
+            // GASから返ってきた基準日にドロップダウンの選択値を合わせる
             if (data.data.baseDateStr) setDropdownsToDate(data.data.baseDateStr);
           } else {
-            // [Level 4] 編集モード用：本日の日付算出と各種UIの表示
+            // 編集モード用：本日の日付を算出し、タイトル横に表示して分かりやすくする
             document.getElementById("weekTitle").style.display = "block";
             document.getElementById("past-view-controls").style.display = "none";
             document.getElementById("footer").style.display = "block";
@@ -439,18 +462,17 @@
             document.getElementById("weekTitle").innerHTML = `${data.data.weekLabel} <span style="font-size: 14px; color: #555; margin-left: 8px;">本日：${todayStr}</span>`;
           }
 
+          // ロード画面を消してテーブルを描画
           document.getElementById("loading").style.display = "none";
-          render(); // テーブル描画処理の呼び出し
+          render(); 
 
-        // ----------------------------------------------------------------------------
-        // [Level 3] 2. 未登録（初回アクセス）時の処理
-        // ----------------------------------------------------------------------------
+        // --- 2. 未登録（LINE IDが名簿に無い初回アクセス）時の処理 ---
         } else if (data.status === "unregistered") {
           document.getElementById("loading").style.display = "none";
           document.getElementById("registration-view").style.display = "block";
           document.getElementById("regTitle").innerText = data.data.title || "父兄出欠確認アプリ";
           
-          // [Level 4] 名前リストを生成してドロップダウンにセット
+          // 名簿リスト（まだ紐付いていない人の一覧）をセレクトボックスに流し込む
           const select = document.getElementById("name-list");
           select.innerHTML = ""; 
           data.list.forEach(item => {
@@ -462,11 +484,10 @@
         }
 
       } catch (e) {
-        // ----------------------------------------------------------------------------
-        // [Level 3] 3. エラー・タイムアウト時のリトライ処理
-        // ----------------------------------------------------------------------------
+        // --- 3. 通信エラー・タイムアウト時の自動リトライ処理 ---
+        // 2回まで自動的に再アクセスを試みる
         if (retryCount < 2) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 500)); // 0.5秒待機
           return await fetchData(retryCount + 1, targetDateStr);
         }
         document.getElementById("loading").style.display = "none";
@@ -476,14 +497,15 @@
     }
 
     /**
-     * 初回ユーザー登録処理
-     * * [Level 2] ドロップダウンで選択したユーザーIDとLINE IDを紐付けます。
+     * 初回ユーザー登録処理（紐付け）
+     * 選択した「名前」と、アクセスしてきた「LINE ID」をGAS上で紐付け（リンク）します。
      */
     async function link() {
       const sid = document.getElementById("name-list").value;
       document.getElementById("loading").style.display = "flex";
       try {
         await fetchWithTimeout(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}`);
+        // 紐付けに成功したら画面をリロードし、メインデータ取得処理へ移る
         window.location.reload(); 
       } catch (e) {
         alert("登録エラーが発生しました");
@@ -493,23 +515,23 @@
 
     /**
      * 変更データの保存処理
-     * * [Level 2] ログイン中ユーザーの編集データのみを抽出し、GASへ送信してLIFFを閉じます。
+     * アプリ内で変更したステータスやコメントをGASへ一括送信し、ウィンドウを閉じます。
      */
     async function saveAll() {
+      // 何も変更していなければ通信せずにそのまま閉じる
       if (!hasChanges) { 
         liff.closeWindow(); 
         return; 
       }
-      if (isSaving) return; // 二重送信防止
+      // 保存ボタン連打による二重送信の防止
+      if (isSaving) return; 
       isSaving = true;
 
       const loader = document.getElementById("loading");
       document.getElementById("loadingText").innerText = "保存中...";
       loader.style.display = "flex";
 
-      // ----------------------------------------------------------------------------
-      // [Level 3] 送信ペイロードの生成
-      // ----------------------------------------------------------------------------
+      // 自分のデータ（行）を探し出し、GASへ送信する形式（JSON）に変換する
       const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
       const payload = days.map((d, i) => ({
         weekLabel: WEEK_LABEL,
@@ -519,93 +541,84 @@
         comment: myData.commentStatus[i] || ""
       }));
 
-      // ----------------------------------------------------------------------------
-      // [Level 3] データ送信と終了処理
-      // ----------------------------------------------------------------------------
+      // データをGASへ送信
       try {
         const res = await fetchWithTimeout(`${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&payload=${encodeURIComponent(JSON.stringify(payload))}`);
         if (!res.ok) throw new Error("HTTP Error");
         
+        // 保存成功後、UXを考慮して0.5秒だけ待ってからLINE画面へ戻る
         setTimeout(() => { liff.closeWindow(); }, 500);
       } catch (e) {
         alert("保存エラーが発生しました\n\n通信環境を確認して再度お試しください");
         loader.style.display = "none"; 
-        isSaving = false;
+        isSaving = false; // エラー時はフラグを戻して再保存できるようにする
       }
     }
 
 
-    /**
-     * ==============================================================================
-     * [Level 1] 2. 過去データ閲覧モード用関数
-     * ==============================================================================
-     * 閲覧する日付（年月・月曜日）を選択・制御するためのロジック群です。
-     */
+    /* ===================================================
+       2. 過去データ閲覧モード用関数
+    =================================================== */
 
     /**
-     * ドロップダウン初期化・再構築
-     * * [Level 2] 基準日に合わせて年・月の選択肢を生成し、イベントリスナーを登録します。
-     * @param {Date|string|Event} arg - 基準日
+     * 年・月・日 ドロップダウンの初期化
+     * 基準日（現在または指定日）を元に、「年」「月」の選択肢を生成します。
+     * @param {Date|string} arg - 基準となる日付
      */
     function initDateDropdowns(arg) {
-      // ----------------------------------------------------------------------------
-      // [Level 3] 1. 基準日の判定（Eventオブジェクト誤爆防止）
-      // ----------------------------------------------------------------------------
+      // イベントオブジェクト（event）が誤って渡された場合を防ぎつつ、基準日をパースする
       let baseDate = new Date();
       if (arg instanceof Date && !isNaN(arg.getTime())) {
         baseDate = arg;
       } else if (typeof arg === 'string' && !isNaN(new Date(arg).getTime())) {
         baseDate = new Date(arg);
       }
-      // [Level 4] argがEventの場合は無視して「今日」を基準にする
 
       const selYear = document.getElementById("sel-year");
       const selMonth = document.getElementById("sel-month");
       const selMonday = document.getElementById("sel-monday");
       if (!selYear || !selMonth) return;
 
-      // ----------------------------------------------------------------------------
-      // [Level 3] 2. 年・月の選択肢生成（再構築ロジック）
-      // ----------------------------------------------------------------------------
+      // 基準日における年・月を取得
       const currentYear = baseDate.getFullYear();
       const currentMonth = baseDate.getMonth(); 
 
-      // [Level 4] 12月なら翌年を追加。システム開始の2026年を下限とする。
+      // 12月の場合は、UIの便宜上「翌年の1月」も見れるように上限を+1する。下限はシステム開始の2026年。
       const maxYear = (currentMonth === 11) ? currentYear + 1 : currentYear;
       const minYear = Math.max(2026, currentYear - 1);
 
-      // [Level 4] 既存のHTMLを一度空にして生成（飛び番の不連続を解消）
+      // HTML文字列として年リストを構築（DOM操作の軽量化）
       let yearHtml = "";
       for (let y = maxYear; y >= minYear; y--) {
         yearHtml += `<option value="${y}">${y}</option>`;
       }
       selYear.innerHTML = yearHtml;
       
+      // 月リスト（1〜12月）の構築
       let monthHtml = "";
       for(let i=1; i<=12; i++) monthHtml += `<option value="${i}">${i}</option>`;
       selMonth.innerHTML = monthHtml;
 
-      // ----------------------------------------------------------------------------
-      // [Level 3] 3. イベントリスナーの設定（初回のみ）
-      // ----------------------------------------------------------------------------
+      // 初回のみ、ドロップダウンを変更した際に関数を呼ぶイベントリスナーを登録
       if (!selYear.dataset.listener) {
         const btn = document.querySelector(".btn-show-past");
         
+        // 年または月が変更されたら「月曜日（日）」のリストを再構築し、表示ボタンを光らせる
         selYear.addEventListener("change", () => { updateMondays(); if(btn) btn.classList.add("btn-highlight"); });
         selMonth.addEventListener("change", () => { updateMondays(); if(btn) btn.classList.add("btn-highlight"); });
         if(selMonday) {
           selMonday.addEventListener("change", () => { if(btn) btn.classList.add("btn-highlight"); });
         }
         
-        selYear.dataset.listener = "true"; // 重複登録防止フラグ
+        selYear.dataset.listener = "true"; // 二重登録防止用のフラグ
       }
 
-      updateMondays();
+      updateMondays(); // 初期状態の月曜日リストを生成
     }
 
     /**
-     * 選択曜日（月曜日）リスト更新
-     * * [Level 2] 選択された年月に存在する月曜日の日付を計算し、ドロップダウンを構築します。
+     * 選択した年・月に存在する「月曜日」のリストを生成・更新
+     * 出欠表は月曜始まりのため、月曜日だけを選択肢として提示します。
      */
     function updateMondays() {
       const selYear = document.getElementById("sel-year");
@@ -613,16 +626,17 @@
       const selMonday = document.getElementById("sel-monday");
       if (!selYear || !selMonth || !selMonday) return;
 
-      // [Level 4] 文字列から数値への安全なパース
       const y = parseInt(selYear.value);
       const m = parseInt(selMonth.value);
       if (isNaN(y) || isNaN(m)) return;
       
       selMonday.innerHTML = "";
+      // その月の月末日（日数の最大値）を取得
       const daysInMonth = new Date(y, m, 0).getDate(); 
       for(let d=1; d<=daysInMonth; d++) {
         const date = new Date(y, m - 1, d);
-        if(date.getDay() === 1) { // 月曜判定
+        // getDay() が 1（月曜日）の場合のみ選択肢に追加
+        if(date.getDay() === 1) { 
           const opt = document.createElement("option");
           opt.value = d;
           opt.text = d;
@@ -632,43 +646,37 @@
     }
         
     /**
-     * 過去データの日付にドロップダウンを同期
-     * * [Level 2] GASから指定された日付文字列(YYYY-MM-DD)に合わせてUI状態を復元します。
-     * @param {string} dateStr - 復元対象の日付文字列
+     * サーバーから指定された日付(YYYY-MM-DD)に合わせて、各ドロップダウンの選択状態を合わせる
      */
     function setDropdownsToDate(dateStr) {
       if (!dateStr) return;
       const parts = dateStr.split("-");
       const y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
       
-      // ----------------------------------------------------------------------------
-      // [Level 3] 1. リストの全生成
-      // ----------------------------------------------------------------------------
-      // [Level 4] 未来の年が含まれる場合に備え、該当する年を基準にリストを作り直す
+      // 取得した日付がプルダウンのリストにない未来/過去の年の場合に備え、該当する年を基準にリストを作り直す
       initDateDropdowns(new Date(y, m - 1, d));
 
-      // ----------------------------------------------------------------------------
-      // [Level 3] 2. 値のセットと後続処理
-      // ----------------------------------------------------------------------------
       document.getElementById("sel-year").value = y;
       document.getElementById("sel-month").value = m;
       
-      updateMondays(); 
+      updateMondays(); // 月が確定したので月曜日を計算
       document.getElementById("sel-monday").value = d;
     }
     
     /**
-     * 過去データの取得要求
-     * * [Level 2] ドロップダウンの選択値を元にGASへデータ要求を送信します。
+     * 指定した日付の過去データを取得（表示ボタン押下時）
      */
     function fetchPastData() {
+      // ボタンのハイライトアニメーションを消す
       document.querySelector(".btn-show-past").classList.remove("btn-highlight");
 
+      // ドロップダウンの値を結合し、「2026-04-13」のような文字列を作成
       const y = document.getElementById("sel-year").value;
       const m = String(document.getElementById("sel-month").value).padStart(2, '0');
       const d = String(document.getElementById("sel-monday").value).padStart(2, '0');
       const targetDateStr = `${y}-${m}-${d}`;
       
+      // UIをローディングに切り替えて再取得
       document.getElementById("main-view").style.display = "none";
       document.getElementById("loading").style.display = "flex";
       document.getElementById("loadingText").innerText = "データ取得中...";
@@ -677,42 +685,39 @@
     }
 
 
-    /**
-     * ==============================================================================
-     * [Level 1] 3. メインUI描画・操作関数
-     * ==============================================================================
-     * 取得したデータをHTMLテーブルとして構築し、クリックイベントを処理します。
-     */
+    /* ===================================================
+       3. メインUI描画・操作関数
+    =================================================== */
 
     /**
-     * テーブル全体の描画処理
-     * * [Level 2] データを走査し、集計ヘッダー、出欠セル、コメント行を動的に生成します。
+     * メインテーブルのHTML構築・描画処理
+     * データ配列をループして、ヘッダー（集計）とボディ（各父兄の行）を作ります。
      */
     function render() {
       if (!days || days.length === 0) return;
 
-      // ----------------------------------------------------------------------------
-      // [Level 3] 1. 日付ごとのステータス集計
-      // ----------------------------------------------------------------------------
+      // 日付ごとに「〇」「△」「×」の数をカウントする連想配列を初期化
       const totals = days.map(() => {
         let obj = {};
         UI_CONFIG.signs.forEach(s => obj[s] = 0);
         return obj;
       });
 
+      // 全父兄のデータを見て集計に足し合わせる
       rawData.forEach(f => {
         f.statuses.forEach((s, i) => {
           if (totals[i].hasOwnProperty(s)) totals[i][s]++;
         });
       });
 
-      // ----------------------------------------------------------------------------
-      // [Level 3] 2. テーブルヘッダーの構築（集計表示込み）
-      // ----------------------------------------------------------------------------
+      // --- テーブルヘッダーの生成 ---
       let html = `<thead><tr><th class="name-col-head">団員<br>父兄</th>`;
       days.forEach((d, i) => {
+        // 土日祝でヘッダーの背景色を切り替えるクラスを判定
         let cls = (d.label.includes("日") || d.label.includes("祝")) ? "sun" : d.label.includes("土") ? "sat" : "";
         html += `<th class="${cls}">${d.label}<div class="count-box">`;
+        
+        // 〇：3、△：1 のような集計行をセル内に追加
         UI_CONFIG.signs.forEach(s => {
           html += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span>${totals[i][s]}</span></div>`;
         });
@@ -720,25 +725,25 @@
       });
       html += "</tr></thead><tbody>";
 
-      // ----------------------------------------------------------------------------
-      // [Level 3] 3. テーブルボディ（各ユーザー行）の構築
-      // ----------------------------------------------------------------------------
+      // --- テーブルボディ（各父兄の行）の生成 ---
       rawData.forEach((f, fIdx) => {
+        // 現在ログインしているユーザーの行かどうか判定
         const isMe = (!IS_VIEW_MODE && MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
         const rowClass = isMe ? 'my-row' : 'other-row';
         html += `<tr class="${rowClass}"><td class="name-cell">${f.name}</td>`;
         
-        // [Level 4] ステータス（〇△×）セルの生成
+        // 〇△×のステータスセルをループで生成
         f.statuses.forEach((s, dIdx) => {
-          const isLocked = days[dIdx].isLocked;
-          const canEdit = !IS_VIEW_MODE && isMe;
+          const isLocked = days[dIdx].isLocked; // 回答期限切れかどうか
+          const canEdit = !IS_VIEW_MODE && isMe; // 編集権限（自分かつ編集モード）
           const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
-          const lockClass = isLocked ? "locked" : "";
+          const lockClass = isLocked ? "locked" : ""; // 期限切れならグレーアウト用クラス付与
           html += `<td class="status-cell status-${s} ${lockClass}" ${clickAttr}>${s}</td>`;
         });
         html += "</tr>";
 
-        // [Level 4] コメント入力行の生成（本人行またはコメント有りの場合のみ）
+        // --- コメント行の生成 ---
+        // コメントが存在するか、または本人の行であればコメント用の行を追加する
         const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
         if (isMe || hasComment) {
           html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label"><span class="com-label-top">┗ 💬</span><span class="com-label-bottom">コメント</span></td>`;
@@ -747,9 +752,11 @@
             const lockClass = isLocked ? "locked" : "";
             
             if (isMe && !IS_VIEW_MODE) {
+              // 自分の場合はタップしてモーダル入力画面へ
               const icon = c ? '💬' : '＋';
               html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
             } else {
+              // 他人の場合はコメントがあれば吹き出しアイコンを表示し、タップで閲覧モーダルへ
               const displayTxt = c ? `<span class="com-text" onclick="viewModal('${f.name}', '${days[dIdx].label}', '${c}')">💬</span>` : '-';
               html += `<td class="${lockClass}"><span class="com-icon">${displayTxt}</span></td>`;
             }
@@ -758,17 +765,18 @@
         }
       });
 
+      // テーブルの描画を実行
       document.getElementById("mainTable").innerHTML = html + "</tbody>";
       
-      // [Level 4] テーブル描画完了後にスクロール判定を遅延実行
+      // 描画後、コンテンツの高さが変わるので、少し遅延させてからスクロール判定（インジケーターの表示）を行う
       setTimeout(checkScroll, 300);
     }
 
     /**
-     * セルのステータストグル（〇→△→×→-）
-     * * [Level 2] ユーザーがセルをタップした際に記号を循環させ、変更フラグを立てます。
-     * @param {number} fIdx - ユーザーインデックス
-     * @param {number} dIdx - 日付インデックス
+     * 出欠ステータスのトグル（〇 → △ → × → -）
+     * ユーザーがセルをタップするたびに記号を循環させます。
+     * @param {number} fIdx - 押されたセルの行インデックス（父兄）
+     * @param {number} dIdx - 押されたセルの列インデックス（日付）
      */
     function toggle(fIdx, dIdx) {
       if (days[dIdx].isLocked) {
@@ -779,24 +787,19 @@
       const signs = UI_CONFIG.signs;
       const current = rawData[fIdx].statuses[dIdx];
       
-      // [Level 4] 次の記号を配列から取得して更新し、再描画
+      // 現在の記号が配列の何番目か探し、+1して次の記号をセット（最後まで行ったら0に戻る）
       rawData[fIdx].statuses[dIdx] = signs[(signs.indexOf(current) + 1) % signs.length];
-      hasChanges = true;
-      render(); 
+      hasChanges = true; // 変更ありフラグを立てる
+      render(); // 変更を反映するために再描画
     }
 
 
-    /**
-     * ==============================================================================
-     * [Level 1] 4. モーダル操作関連
-     * ==============================================================================
-     * コメントの入力・表示用モーダルウィンドウを制御します。
-     */
+    /* ===================================================
+       4. モーダル操作関連
+    =================================================== */
 
     /**
-     * 編集用モーダルを開く
-     * @param {number} fIdx - ユーザーインデックス
-     * @param {number} dIdx - 日付インデックス
+     * コメント入力用モーダルを開く（自分のセルをタップ時）
      */
     function openModal(fIdx, dIdx) {
       if (days[dIdx].isLocked) { 
@@ -806,43 +809,41 @@
       currentEditFIdx = fIdx; 
       currentEditDIdx = dIdx;
       
+      // モーダル内のタイトルや入力を初期化して表示
       document.getElementById("modalTitle").innerText = days[dIdx].label + " のコメント";
       document.getElementById("modalDesc").innerText = "コメントを入力 (例: 17:30から参加)";
       document.getElementById("modalDesc").style.display = "block";
       document.getElementById("modalInput").value = rawData[fIdx].commentStatus[dIdx] || "";
-      document.getElementById("modalInput").readOnly = false;
-      document.getElementById("modalApplyBtn").style.display = "block";
+      document.getElementById("modalInput").readOnly = false; // 編集許可
+      document.getElementById("modalApplyBtn").style.display = "block"; // 決定ボタン表示
       document.getElementById("commentModal").style.display = "flex";
       
+      // アニメーション完了後に自動で入力欄にフォーカスを当てる
       setTimeout(() => document.getElementById("modalInput").focus(), 100);
     }
 
     /**
-     * 閲覧用モーダルを開く
-     * @param {string} name - ユーザー名
-     * @param {string} dateLabel - 日付ラベル
-     * @param {string} text - コメント内容
+     * コメント閲覧用モーダルを開く（他人のコメントをタップ時）
      */
     function viewModal(name, dateLabel, text) {
       document.getElementById("modalTitle").innerText = `${name} ${dateLabel} のコメント`;
-      document.getElementById("modalDesc").style.display = "none";
+      document.getElementById("modalDesc").style.display = "none"; // 説明文は不要なので隠す
       document.getElementById("modalInput").value = text;
-      document.getElementById("modalInput").readOnly = true;
-      document.getElementById("modalApplyBtn").style.display = "none";
+      document.getElementById("modalInput").readOnly = true; // 編集不可
+      document.getElementById("modalApplyBtn").style.display = "none"; // 決定ボタンも隠す
       document.getElementById("commentModal").style.display = "flex";
     }
 
     /**
-     * モーダル入力値の適用
-     * * [Level 2] 入力されたテキストをデータ配列に保存し、再描画します。
+     * モーダルで入力されたコメントをデータ配列に適用する
      */
     function applyComment() {
       if (currentEditFIdx === -1) return;
       const val = document.getElementById("modalInput").value;
       rawData[currentEditFIdx].commentStatus[currentEditDIdx] = val;
-      hasChanges = true;
+      hasChanges = true; // 変更ありフラグ
       closeModal(); 
-      render(); 
+      render(); // 再描画して画面に反映
     }
 
     /**
@@ -855,28 +856,26 @@
     }
 
 
-    /**
-     * ==============================================================================
-     * [Level 1] 5. スクロール制御関連
-     * ==============================================================================
-     * 下部へのスクロール誘導や、iOS特有のバウンススクロール防止を制御します。
-     */
+    /* ===================================================
+       5. スクロール制御関連
+    =================================================== */
 
     /**
-     * スクロールインジケーターの表示判定
-     * * [Level 2] スクロール位置が最下部付近に到達したかどうかで▼ボタンの表示を切り替えます。
+     * スクロールインジケーター（▼ボタン）の表示/非表示を切り替える
+     * 領域がスクロール可能であり、かつ最下部まで到達していない場合にのみ表示します。
      */
     function checkScroll() {
       const area = document.getElementById("content-area");
       const indicator = document.getElementById("scrollIndicator");
       if (!area || !indicator) return;
       
-      const scrollH = Math.round(area.scrollHeight);
-      const clientH = Math.round(area.clientHeight);
-      const scrollT = Math.round(area.scrollTop);
+      const scrollH = Math.round(area.scrollHeight); // コンテンツ全体の高さ
+      const clientH = Math.round(area.clientHeight); // 表示されている領域の高さ
+      const scrollT = Math.round(area.scrollTop);    // 現在のスクロール位置（一番上が0）
       
+      // スクロールバーが発生しているか（遊びの3pxを持たせる）
       const canScroll = scrollH > (clientH + 3);
-      // [Level 4] 下端に到達しているか判定（10pxの余裕を持たせる）
+      // 下端付近（残り10px以内）に到達しているか判定
       const isBottom = (scrollH - scrollT) <= (clientH + 10);
       
       if (canScroll && !isBottom) {
@@ -886,54 +885,54 @@
       }
     }
 
+    // スクロール時および画面サイズ変更時にインジケーター表示判定を実行
     document.getElementById("content-area").addEventListener("scroll", checkScroll);
     window.addEventListener("resize", checkScroll);
 
     /**
-     * テーブル最下部へのスムーススクロール実行
-     * * [Level 2] requestAnimationFrameを使用し、指定時間かけて滑らかに移動させます。
-     * @param {HTMLElement} element - スクロール対象
-     * @param {number} duration - アニメーション時間(ms)
+     * 指定要素をゆっくりと最下部までスムーススクロールさせる
+     * iOSでの動作の安定性を高めるため、CSSのscroll-behaviorではなくJSによるアニメーションで制御します。
+     * @param {HTMLElement} element - スクロールさせる要素（content-area）
+     * @param {number} duration - アニメーションにかける時間（ミリ秒）
      */
     function slowScrollToBottom(element, duration) {
       const table = element.querySelector('table');
       const start = element.scrollTop;
       
-      // ----------------------------------------------------------------------------
-      // [Level 3] 目標座標の算出
-      // ----------------------------------------------------------------------------
-      // [Level 4] scrollHeightではなく純粋な表の高さ(offsetHeight)を使用し、下部余白を除外
+      // scrollHeightではなく純粋な表の高さ(offsetHeight)を使用し、下部余白のズレをなくす
       const tableHeight = table.offsetHeight;
       const target = tableHeight - element.clientHeight;
       const distance = target - start;
 
+      // すでに一番下なら何もしない
       if (distance <= 0) return;
 
-      // [Level 4] CSSのsmooth指定と干渉しないよう、一時的にautoに設定
+      // JSによる制御中、CSSの「scroll-behavior: smooth」が設定されていると干渉するため一時的に解除
       const originalStyle = element.style.scrollBehavior;
       element.style.scrollBehavior = 'auto'; 
 
       let startTime = null;
 
-      // ----------------------------------------------------------------------------
-      // [Level 3] アニメーションループ関数
-      // ----------------------------------------------------------------------------
+      // requestAnimationFrame を用いたアニメーションループ
       function animation(currentTime) {
         if (startTime === null) startTime = currentTime;
         const timeElapsed = currentTime - startTime;
         
+        // 現在の経過時間からスクロール位置を計算
         const run = easeInOutQuad(timeElapsed, start, distance, duration);
         element.scrollTop = run;
 
         if (timeElapsed < duration) {
+          // まだ時間が達していなければ次フレームを要求
           requestAnimationFrame(animation);
         } else {
+          // 終了時は目標位置へピタッと合わせ、CSSのスタイルを元に戻す
           element.scrollTop = target;
           element.style.scrollBehavior = originalStyle;
         }
       }
 
-      // [Level 4] イージング関数（二次関数を用いた加減速）
+      // 二次関数を用いたイージング関数（最初はゆっくり、途中から加速、最後は減速）
       function easeInOutQuad(t, b, c, d) {
         t /= d / 2;
         if (t < 1) return c / 2 * t * t + b;
@@ -944,24 +943,26 @@
       requestAnimationFrame(animation);
     }
 
-    // インジケーター（▼ボタン）のクリックイベント
+    // インジケーター（▼ボタン）をタップしたら1秒かけて一番下までスクロールさせる
     document.getElementById("scrollIndicator").onclick = function() {
       const area = document.getElementById("content-area");
       slowScrollToBottom(area, 1000); 
     };
 
     /**
-     * 全体バウンススクロールの防止 (iOS対応)
-     * * [Level 2] 画面が引っ張られてリロードされるのを防ぎつつ、テーブル等内部のスクロールは許可します。
+     * iOS等の全体バウンススクロール（ゴムひも効果による引っ張りリロード等）の防止
+     * アプリ全体の引っ張りを防ぎつつ、テーブル等内部エリアのスクロール動作は許可します。
      */
     document.addEventListener('touchmove', function(e) {
-      if (e.touches.length > 1) return; // ピンチズーム等は許可
+      if (e.touches.length > 1) return; // ピンチズーム等（2本指以上）は許可する
+      
+      // スクロールしてよい要素（テーブルのラッパーやモーダル）の上以外でスワイプされた場合はイベントを止める
       if (!e.target.closest('.table-wrapper') && !e.target.closest('.modal')) { 
         e.preventDefault(); 
       }
-    }, { passive: false });
+    }, { passive: false }); // preventDefault() を使えるように passive:false を指定
 
-    // アプリの起動
+    // HTMLの読み込みが完了したらアプリを起動
     window.onload = init;
   </script>
 </body>
