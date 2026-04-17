@@ -537,54 +537,41 @@
     =================================================== */
 /**
  * ==============================================================================
- * [Level 1] 日付ドロップダウン初期化・再構築ロジック
+ * [Level 1] 過去データ閲覧モード用：ドロップダウン初期化・再構築
  * ==============================================================================
- * システムの基準日に基づき、年・月のドロップダウンを動的に生成します。
- * 2028年などの未来データ編集時に [2028, 2026] と飛び番になる不具合を、
- * リスト自体の「全書き換え」によって解決します。
+ * 年・月の選択肢を生成します。引数に日付を渡すことで、その年に合わせた
+ * 適切な範囲（2028年なら [2028, 2027] 等）にリストを書き換えます。
  * * [Level 2] インターフェース仕様
- * @param {any} arg - 基準日（Dateオブジェクト or 日付文字列）。
- * イベントリスナーから呼ばれた際の Event オブジェクトは自動無視されます。
+ * @param {any} arg - 基準日（Date型, String型, または Event）。
  */
 function initDateDropdowns(arg) {
   // ----------------------------------------------------------------------------
-  // [Level 3] 1. 基準日の確定と型ガード（読み込みエラー回避の核心）
+  // [Level 3] 1. 基準日の判定（Eventオブジェクト誤爆防止）
   // ----------------------------------------------------------------------------
-  let baseDate;
-  
-  // [Level 4] 引数が「正真正銘の日付オブジェクト」かつ「有効な値」か判定
+  let baseDate = new Date();
   if (arg instanceof Date && !isNaN(arg.getTime())) {
     baseDate = arg;
-  } 
-  // [Level 4] 文字列で渡された場合はDate型に変換を試みる
-  else if (typeof arg === 'string' && !isNaN(new Date(arg).getTime())) {
+  } else if (typeof arg === 'string' && !isNaN(new Date(arg).getTime())) {
     baseDate = new Date(arg);
   }
-  // [Level 4] それ以外（Eventオブジェクトや未指定）は「今日」を基準にする
-  // これにより window.onload 時の Event 混入によるクラッシュを完全に防ぎます
-  else {
-    baseDate = new Date();
-  }
+  // [Level 4] argがEventの場合は無視して「今日」を基準にする（読込停止を防止）
 
   const selYear = document.getElementById("sel-year");
   const selMonth = document.getElementById("sel-month");
-  if (!selYear || !selMonth) return; // 要素が存在しない環境でのエラー防止
+  const selMonday = document.getElementById("sel-monday");
+  if (!selYear || !selMonth) return;
 
   // ----------------------------------------------------------------------------
-  // [Level 3] 2. 表示範囲（年）の計算
+  // [Level 3] 2. 年・月の選択肢生成（再構築ロジック）
   // ----------------------------------------------------------------------------
   const currentYear = baseDate.getFullYear();
   const currentMonth = baseDate.getMonth(); 
 
-  // [Level 4] 12月(インデックス11)の場合は翌年も選択肢に含める
+  // [Level 4] 12月なら翌年を追加。システム開始の2026年を下限とする。
   const maxYear = (currentMonth === 11) ? currentYear + 1 : currentYear;
-  // [Level 4] 基準年の1年前まで表示。ただしシステム開始年である2026年を下回らない。
   const minYear = Math.max(2026, currentYear - 1);
 
-  // ----------------------------------------------------------------------------
-  // [Level 3] 3. HTML要素の生成と流し込み（再構築）
-  // ----------------------------------------------------------------------------
-  // [Level 4] 既存の [2028, 2026] のような不連続なリストを破棄し、連続した値を生成
+  // [Level 4] 既存のHTMLを一度空にして生成（[2028, 2026] の不連続を解消）
   let yearHtml = "";
   for (let y = maxYear; y >= minYear; y--) {
     yearHtml += `<option value="${y}">${y}</option>`;
@@ -592,78 +579,93 @@ function initDateDropdowns(arg) {
   selYear.innerHTML = yearHtml;
   
   let monthHtml = "";
-  for (let m = 1; m <= 12; m++) {
-    monthHtml += `<option value="${m}">${m}</option>`;
-  }
+  for(let i=1; i<=12; i++) monthHtml += `<option value="${i}">${i}</option>`;
   selMonth.innerHTML = monthHtml;
-}
-    
-      const btn = document.querySelector(".btn-show-past");
 
-      // イベントリスナーの重複登録を防止
-      if (!isDropdownListenerAdded) {
-        selYear.addEventListener("change", () => { updateMondays(); btn.classList.add("btn-highlight"); });
-        selMonth.addEventListener("change", () => { updateMondays(); btn.classList.add("btn-highlight"); });
-        selMonday.addEventListener("change", () => { btn.classList.add("btn-highlight"); });
-        isDropdownListenerAdded = true;
-      }
-      updateMondays();
+  // ----------------------------------------------------------------------------
+  // [Level 3] 3. イベントリスナーの設定（初回のみ）
+  // ----------------------------------------------------------------------------
+  // [Level 4] 既にリスナーが登録されている場合はスキップする（多重登録・停止防止）
+  if (!selYear.dataset.listener) {
+    const btn = document.querySelector(".btn-show-past");
+    
+    selYear.addEventListener("change", () => { updateMondays(); if(btn) btn.classList.add("btn-highlight"); });
+    selMonth.addEventListener("change", () => { updateMondays(); if(btn) btn.classList.add("btn-highlight"); });
+    if(selMonday) {
+      selMonday.addEventListener("change", () => { if(btn) btn.classList.add("btn-highlight"); });
     }
+    
+    // リスナー登録済みフラグを立てる
+    selYear.dataset.listener = "true";
+  }
+
+  // 最初の一回だけ月曜日リストを構築
+  updateMondays();
+}
 
     /**
      * 選択されている「年・月」に基づいて、その月にある「月曜日」の日付だけを計算し、
      * 日(週)のドロップダウンにセットします。
      */
-    function updateMondays() {
-      const y = parseInt(document.getElementById("sel-year").value);
-      const m = parseInt(document.getElementById("sel-month").value);
-      const selMonday = document.getElementById("sel-monday");
-      
-      selMonday.innerHTML = "";
-      const daysInMonth = new Date(y, m, 0).getDate(); 
-      for(let d=1; d<=daysInMonth; d++) {
-        const date = new Date(y, m - 1, d);
-        if(date.getDay() === 1) { // 1 = 月曜日
-          const opt = document.createElement("option");
-          opt.value = d;
-          opt.text = d;
-          selMonday.appendChild(opt);
-        }
-      }
-    }
-
 /**
  * ==============================================================================
- * [Level 1] 特定日付への表示切り替えロジック
+ * [Level 1] 選択曜日（月曜日）リスト更新
  * ==============================================================================
- * 閲覧・編集対象のデータ日付に合わせて、ドロップダウンを再構築して値をセットします。
- * * [Level 2] インターフェース仕様
- * @param {Date|string} targetDate - セットしたい対象の日付データ
+ * 元のロジックを維持しつつ、数値パースの安全性を高めています。
  */
-function setDropdownsToDate(targetDate) {
-  if (!targetDate) return;
-
-  // ----------------------------------------------------------------------------
-  // [Level 3] 1. リストのクリーンアップと再構築
-  // ----------------------------------------------------------------------------
-  // [Level 4] 指定された日付を基準に initDateDropdowns を呼び出し、
-  // その日付が表示範囲に含まれるような「新しいリスト」を生成させます。
-  initDateDropdowns(targetDate);
-
-  // ----------------------------------------------------------------------------
-  // [Level 3] 2. 値の選択状態の更新
-  // ----------------------------------------------------------------------------
-  const d = new Date(targetDate);
+function updateMondays() {
   const selYear = document.getElementById("sel-year");
   const selMonth = document.getElementById("sel-month");
+  const selMonday = document.getElementById("sel-monday");
+  if (!selYear || !selMonth || !selMonday) return;
 
-  if (selYear) selYear.value = d.getFullYear();
-  if (selMonth) selMonth.value = d.getMonth() + 1;
+  const y = parseInt(selYear.value);
+  const m = parseInt(selMonth.value);
+  if (isNaN(y) || isNaN(m)) return;
   
-  
-      updateMondays(); 
-      document.getElementById("sel-monday").value = d;
+  selMonday.innerHTML = "";
+  const daysInMonth = new Date(y, m, 0).getDate(); 
+  for(let d=1; d<=daysInMonth; d++) {
+    const date = new Date(y, m - 1, d);
+    if(date.getDay() === 1) { // 月曜日
+      const opt = document.createElement("option");
+      opt.value = d;
+      opt.text = d;
+      selMonday.appendChild(opt);
     }
+  }
+}
+    
+/**
+ * ==============================================================================
+ * [Level 1] 過去データの日付にドロップダウンを同期
+ * ==============================================================================
+ * 以前の「足りない年を一個だけ追加する安全装置」を撤廃し、
+ * 「閲覧する年に合わせてリストをまるごと再構築」する手法に切り替えました。
+ */
+function setDropdownsToDate(dateStr) {
+  if (!dateStr) return;
+  const parts = dateStr.split("-");
+  const y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
+  
+  // ----------------------------------------------------------------------------
+  // [Level 3] 1. リストの全生成（ここが修正の核）
+  // ----------------------------------------------------------------------------
+  // [Level 4] 2028年のデータなら、2028年を基準に [2028, 2027] を作り直します。
+  // これにより [2028, 2026] のような飛び番は発生しなくなります。
+  initDateDropdowns(new Date(y, m - 1, d));
+
+  // ----------------------------------------------------------------------------
+  // [Level 3] 2. 値のセットと後続処理
+  // ----------------------------------------------------------------------------
+  document.getElementById("sel-year").value = y;
+  document.getElementById("sel-month").value = m;
+  
+  updateMondays(); 
+  document.getElementById("sel-monday").value = d;
+}
+
+    
     /**
      * ドロップダウンで指定した日付のデータをサーバーから取得します。
      */
