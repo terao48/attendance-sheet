@@ -104,7 +104,7 @@
     .btn-highlight {
       background: #2ecc71 !important; /* 少し明るい緑に */
       transform: translateY(-3px);   /* 上に少し浮かす */
-      box-shadow: 0 6px 12px rgba(0,0,0,0.2); /* 影を強くして浮遊感を出す */
+      box-shadow: 0 12px 24px rgba(0,0,0,0.2); /* 影を強くして浮遊感を出す */
       animation: pulse-green 1.5s infinite;  /* 軽く点滅させて注意を引く */
     }
     @keyframes pulse-green {
@@ -540,33 +540,39 @@
      * 過去データ閲覧モードの「年・月・日」のドロップダウン初期設定を行います。
      * 年・月の選択が変更された場合は、連動して月曜日リストを更新します。
      */
-// 変更後： 引数で基準日を受け取れるようにする（指定がなければ今日の日付）
 /**
-     * 引数の日付（デフォルトは現在時刻）を基準に、ドロップダウンのリストを生成・再構築します。
-     */
-    function initDateDropdowns(baseDate = new Date()) {
-      const selYear = document.getElementById("sel-year");
-      const selMonth = document.getElementById("sel-month");
-      const selMonday = document.getElementById("sel-monday");
-      
-      const currentYear = baseDate.getFullYear();
-      const currentMonth = baseDate.getMonth(); 
+ * ① 年月（および週）のドロップダウンを初期化・構築する関数
+ * @param {Date} baseDate - 基準となる日付（指定がない場合は現在時刻）
+ */
+function initDateDropdowns(baseDate = new Date()) {
+  const selYear = document.getElementById("sel-year");
+  const selMonth = document.getElementById("sel-month");
+  const selMonday = document.getElementById("sel-monday"); // ※お手元のコードに合わせて残しています
+  
+  // 渡された baseDate を基準にして年と月を取得
+  const currentYear = baseDate.getFullYear();
+  const currentMonth = baseDate.getMonth(); // 0〜11 (11が12月)
 
-      // 12月なら翌年を追加
-      const maxYear = (currentMonth === 11) ? currentYear + 1 : currentYear;
-      // 1年前まで表示、ただし2026年より過去にはしない
-      const minYear = Math.max(2026, currentYear - 1);
+  // 12月(11)なら翌年までプルダウンに追加する
+  const maxYear = (currentMonth === 11) ? currentYear + 1 : currentYear;
+  // 1年前まで表示、ただし2026年より過去にはしない
+  const minYear = Math.max(2026, currentYear - 1);
 
-      let yearHtml = "";
-      for (let y = maxYear; y >= minYear; y--) {
-        yearHtml += `<option value="${y}">${y}</option>`;
-      }
-      selYear.innerHTML = yearHtml;
-      
-      let monthHtml = "";
-      for(let i=1; i<=12; i++) monthHtml += `<option value="${i}">${i}</option>`;
-      selMonth.innerHTML = monthHtml;
-      
+  // 年のドロップダウンHTMLを生成
+  let yearHtml = "";
+  for (let y = maxYear; y >= minYear; y--) {
+    yearHtml += `<option value="${y}">${y}</option>`;
+  }
+  selYear.innerHTML = yearHtml;
+  
+  // 月のドロップダウンHTMLを生成 (1〜12月)
+  let monthHtml = "";
+  for (let m = 1; m <= 12; m++) {
+    monthHtml += `<option value="${m}">${m}</option>`;
+  }
+  if (selMonth) {
+    selMonth.innerHTML = monthHtml;
+  }      
       const btn = document.querySelector(".btn-show-past");
 
       // イベントリスナーの重複登録を防止
@@ -601,18 +607,19 @@
       }
     }
 
-    /**
-     * 取得した過去データの日付情報に合わせて、ドロップダウンの選択状態を合わせます。
-     * @param {string} dateStr - 合わせたい日付文字列 (例: "2026-04-13")
-     */
+/**
+ * ② 指定した日付のデータをドロップダウンにセットする関数
+ * @param {Date} targetDate - セットしたい対象の日付データ
+ */
 function setDropdownsToDate(targetDate) {
-      // ターゲットの日付を基準にドロップダウンを作り直す
-      // （※これにより、2028年を開いたら [2028, 2027] にリセットされ、2026が消えます）
-      initDateDropdowns(targetDate);
+  // 1. ターゲットの日付を基準にドロップダウン自体を「再構築」する
+  // これにより、例えば2028年のデータを開いた際は [2028, 2027] のリストが作られ、2026は消えます。
+  initDateDropdowns(targetDate);
 
-      // その後、値をセットする
-      document.getElementById("sel-year").value = targetDate.getFullYear();
-      document.getElementById("sel-month").value = targetDate.getMonth() + 1;
+  // 2. 再構築されたドロップダウンに対して、値を正しく選択（セット）する
+  document.getElementById("sel-year").value = targetDate.getFullYear();
+  document.getElementById("sel-month").value = targetDate.getMonth() + 1;
+  
       updateMondays(); 
       document.getElementById("sel-monday").value = d;
     }
