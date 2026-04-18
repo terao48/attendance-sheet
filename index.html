@@ -7,6 +7,7 @@
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   
   <style>
+    /* HTML コードv8.9 */
     /* ===================================================
        1. 全体設定・ルート変数
     =================================================== */
@@ -860,45 +861,106 @@ function setDropdownsToDate(dateStr) {
     =================================================== */
 
     /**
-     * テーブル領域のスクロール状態を監視し、
-     * 下にまだコンテンツが隠れている場合はスクロールインジケーターを表示します。
+     * 画面のスクロール位置を判定し、「下に続きがあります」インジケーターの表示/非表示を切り替えます。
+     * リストが一番下までスクロールされるとインジケーターが消えます。
      */
     function checkScroll() {
-      const wrapper = document.querySelector(".table-wrapper");
+      const area = document.getElementById("content-area");
       const indicator = document.getElementById("scrollIndicator");
-      if (!wrapper || !indicator) return;
-
-      // 下方向へのスクロール余地を計算（数ピクセルの誤差を考慮して2より大きいかで判定）
-      const remainingScroll = wrapper.scrollHeight - wrapper.scrollTop - wrapper.clientHeight;
-      if (remainingScroll > 2) {
+      if (!area || !indicator) return;
+      
+      const scrollH = Math.round(area.scrollHeight);
+      const clientH = Math.round(area.clientHeight);
+      const scrollT = Math.round(area.scrollTop);
+      
+      const canScroll = scrollH > (clientH + 3);
+      // 下端に到達しているか判定（10pxの余裕を持たせる）
+      const isBottom = (scrollH - scrollT) <= (clientH + 10);
+      
+      if (canScroll && !isBottom) {
         indicator.style.display = "block";
       } else {
         indicator.style.display = "none";
       }
     }
 
-    // 画面ロード時のイベント設定・初期化呼び出し
-    document.addEventListener("DOMContentLoaded", () => {
-      // スクロール可能なラッパー要素にイベントリスナーを追加
-      const wrapper = document.querySelector(".table-wrapper");
-      if (wrapper) {
-        wrapper.addEventListener("scroll", checkScroll);
+    // スクロール時やウィンドウサイズ変更時にインジケーター判定を実行
+    document.getElementById("content-area").addEventListener("scroll", checkScroll);
+    window.addEventListener("resize", checkScroll);
+
+    /**
+     * 指定された要素内で、表の正確な終端（一番下）まで滑らかにスクロールさせます。
+     * @param {HTMLElement} element - スクロール対象の要素（table-wrapperなど）
+     * @param {number} duration - スクロールにかけるミリ秒数（小さくすると速くなる）
+     */
+    function slowScrollToBottom(element, duration) {
+      const table = element.querySelector('table');
+      const start = element.scrollTop;
+      
+      // 【重要】scrollHeightではなく、tableのoffsetHeight（純粋な表の高さ）を使います。
+      // これにより、余白（margin-bottom等）に惑わされず「表の最後の行」でピタッと止まります。
+      const tableHeight = table.offsetHeight;
+      const target = tableHeight - element.clientHeight;
+      const distance = target - start;
+
+      // すでに下端にいる場合は何もしない
+      if (distance <= 0) return;
+
+      // 【修正ポイント】CSSの「scroll-behavior: smooth」がJavaScriptの動きを
+      // 邪魔して速度が固定されないよう、一時的に「auto（即時移動）」に固定します。
+      const originalStyle = element.style.scrollBehavior;
+      element.style.scrollBehavior = 'auto'; 
+
+      let startTime = null;
+
+      // requestAnimationFrameを使って、指定時間かけてコマ送りアニメーションを行います。
+      function animation(currentTime) {
+        if (startTime === null) startTime = currentTime;
+        const timeElapsed = currentTime - startTime;
+        
+        // なめらかな加減速の計算（イージング）
+        const run = easeInOutQuad(timeElapsed, start, distance, duration);
+        element.scrollTop = run;
+
+        if (timeElapsed < duration) {
+          requestAnimationFrame(animation);
+        } else {
+          // アニメーション完了時に最終位置を補正し、CSSを元の状態に戻します
+          element.scrollTop = target;
+          element.style.scrollBehavior = originalStyle;
+        }
       }
 
-      // インジケーターをクリックした際に少し下へスクロールさせる
-      const indicator = document.getElementById("scrollIndicator");
-      if (indicator) {
-        indicator.addEventListener("click", () => {
-          if (wrapper) {
-            wrapper.scrollBy({ top: 150, behavior: 'smooth' });
-          }
-        });
+      // イージング関数（最初はゆっくり、途中で速く、最後はまたゆっくり）
+      function easeInOutQuad(t, b, c, d) {
+        t /= d / 2;
+        if (t < 1) return c / 2 * t * t + b;
+        t--;
+        return -c / 2 * (t * (t - 2) - 1) + b;
       }
 
-      // アプリ起動処理の開始
-      init();
-    });
+      requestAnimationFrame(animation);
+    }
 
+    // インジケーター（▼ボタン）が押された時の挙動を登録します
+    document.getElementById("scrollIndicator").onclick = function() {
+      const area = document.getElementById("content-area");
+      // 1000ミリ秒（1秒）かけて下までスクロールします（数字を減らすと速くなります）
+      slowScrollToBottom(area, 1000); 
+    };
+
+    /**
+     * iOS等のブラウザで、画面全体が引っ張られてリロード（バウンス）するのを防ぎます。
+     * ただし、テーブルの中身やモーダル内はスクロールできるように許可します。
+     */
+    document.addEventListener('touchmove', function(e) {
+      if (e.touches.length > 1) return; // ピンチズーム等は許可
+      if (!e.target.closest('.table-wrapper') && !e.target.closest('.modal')) { 
+        e.preventDefault(); 
+      }
+    }, { passive: false });
+
+    // アプリの起動エントリポイント
+    window.onload = init;
   </script>
 </body>
-</html>
