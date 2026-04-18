@@ -105,7 +105,7 @@
     .btn-highlight {
       background: #2ecc71 !important; /* 少し明るい緑に */
       transform: translateY(-3px);   /* 上に少し浮かす */
-      box-shadow: 0 12px 24px rgba(0,0,0,0.2); /* 影を強くして浮遊感を出す */
+      box-shadow: 0 24px 36px rgba(0,0,0,0.2); /* 影を強くして浮遊感を出す */
       animation: pulse-green 1.5s infinite;  /* 軽く点滅させて注意を引く */
     }
     @keyframes pulse-green {
@@ -536,135 +536,135 @@
     /* ===================================================
        2. 過去データ閲覧モード用関数
     =================================================== */
-/**
- * ==============================================================================
- * [Level 1] 過去データ閲覧モード用：ドロップダウン初期化・再構築
- * ==============================================================================
- * 年・月の選択肢を生成します。引数に日付を渡すことで、その年に合わせた
- * 適切な範囲（2028年なら [2028, 2027] 等）にリストを書き換えます。
- * * [Level 2] インターフェース仕様
- * @param {any} arg - 基準日（Date型, String型, または Event）。
- */
-function initDateDropdowns(arg) {
-  // ----------------------------------------------------------------------------
-  // [Level 3] 1. 基準日の判定（Eventオブジェクト誤爆防止）
-  // ----------------------------------------------------------------------------
-  let baseDate = new Date();
-  if (arg instanceof Date && !isNaN(arg.getTime())) {
-    baseDate = arg;
-  } else if (typeof arg === 'string' && !isNaN(new Date(arg).getTime())) {
-    baseDate = new Date(arg);
-  }
-  // [Level 4] argがEventの場合は無視して「今日」を基準にする（読込停止を防止）
+    /**
+     * ==============================================================================
+     * 過去データ閲覧モード用：ドロップダウン初期化・再構築
+     * ==============================================================================
+     * 年・月の選択肢を生成します。引数に日付を渡すことで、その年に合わせた
+     * 適切な範囲（2028年なら [2028, 2027] 等）にリストを書き換えます。
+     * *  インターフェース仕様
+     * @param {any} arg - 基準日（Date型, String型, または Event）。
+     */
+    function initDateDropdowns(arg) {
+      // ----------------------------------------------------------------------------
+      //  1. 基準日の判定（Eventオブジェクト誤爆防止）
+      // ----------------------------------------------------------------------------
+      let baseDate = new Date();
+      if (arg instanceof Date && !isNaN(arg.getTime())) {
+        baseDate = arg;
+      } else if (typeof arg === 'string' && !isNaN(new Date(arg).getTime())) {
+        baseDate = new Date(arg);
+      }
+      //  argがEventの場合は無視して「今日」を基準にする（読込停止を防止）
 
-  const selYear = document.getElementById("sel-year");
-  const selMonth = document.getElementById("sel-month");
-  const selMonday = document.getElementById("sel-monday");
-  if (!selYear || !selMonth) return;
+      const selYear = document.getElementById("sel-year");
+      const selMonth = document.getElementById("sel-month");
+      const selMonday = document.getElementById("sel-monday");
+      if (!selYear || !selMonth) return;
 
-  // ----------------------------------------------------------------------------
-  // [Level 3] 2. 年・月の選択肢生成（再構築ロジック）
-  // ----------------------------------------------------------------------------
-  const currentYear = baseDate.getFullYear();
-  const currentMonth = baseDate.getMonth(); 
+      // ----------------------------------------------------------------------------
+      //  2. 年・月の選択肢生成（再構築ロジック）
+      // ----------------------------------------------------------------------------
+      const currentYear = baseDate.getFullYear();
+      const currentMonth = baseDate.getMonth(); 
 
-  // [Level 4] 12月なら翌年を追加。システム開始の2026年を下限とする。
-  const maxYear = (currentMonth === 11) ? currentYear + 1 : currentYear;
-  const minYear = Math.max(2026, currentYear - 1);
+      //  12月なら翌年を追加。システム開始の2026年を下限とする。
+      const maxYear = (currentMonth === 11) ? currentYear + 1 : currentYear;
+      const minYear = Math.max(2026, currentYear - 1);
 
-  // [Level 4] 既存のHTMLを一度空にして生成（[2028, 2026] の不連続を解消）
-  let yearHtml = "";
-  for (let y = maxYear; y >= minYear; y--) {
-    yearHtml += `<option value="${y}">${y}</option>`;
-  }
-  selYear.innerHTML = yearHtml;
+      //  既存のHTMLを一度空にして生成（[2028, 2026] の不連続を解消）
+      let yearHtml = "";
+      for (let y = maxYear; y >= minYear; y--) {
+        yearHtml += `<option value="${y}">${y}</option>`;
+      }
+      selYear.innerHTML = yearHtml;
   
-  let monthHtml = "";
-  for(let i=1; i<=12; i++) monthHtml += `<option value="${i}">${i}</option>`;
-  selMonth.innerHTML = monthHtml;
+      let monthHtml = "";
+      for(let i=1; i<=12; i++) monthHtml += `<option value="${i}">${i}</option>`;
+      selMonth.innerHTML = monthHtml;
 
-  // ----------------------------------------------------------------------------
-  // [Level 3] 3. イベントリスナーの設定（初回のみ）
-  // ----------------------------------------------------------------------------
-  // [Level 4] 既にリスナーが登録されている場合はスキップする（多重登録・停止防止）
-  if (!selYear.dataset.listener) {
-    const btn = document.querySelector(".btn-show-past");
+      // ----------------------------------------------------------------------------
+      //  3. イベントリスナーの設定（初回のみ）
+      // ----------------------------------------------------------------------------
+      //  既にリスナーが登録されている場合はスキップする（多重登録・停止防止）
+      if (!selYear.dataset.listener) {
+        const btn = document.querySelector(".btn-show-past");
     
-    selYear.addEventListener("change", () => { updateMondays(); if(btn) btn.classList.add("btn-highlight"); });
-    selMonth.addEventListener("change", () => { updateMondays(); if(btn) btn.classList.add("btn-highlight"); });
-    if(selMonday) {
-      selMonday.addEventListener("change", () => { if(btn) btn.classList.add("btn-highlight"); });
+        selYear.addEventListener("change", () => { updateMondays(); if(btn) btn.classList.add("btn-highlight"); });
+        selMonth.addEventListener("change", () => { updateMondays(); if(btn) btn.classList.add("btn-highlight"); });
+        if(selMonday) {
+          selMonday.addEventListener("change", () => { if(btn) btn.classList.add("btn-highlight"); });
+        }
+    
+        // リスナー登録済みフラグを立てる
+        selYear.dataset.listener = "true";
+      }
+
+      // 最初の一回だけ月曜日リストを構築
+      updateMondays();
     }
-    
-    // リスナー登録済みフラグを立てる
-    selYear.dataset.listener = "true";
-  }
-
-  // 最初の一回だけ月曜日リストを構築
-  updateMondays();
-}
 
     /**
      * 選択されている「年・月」に基づいて、その月にある「月曜日」の日付だけを計算し、
      * 日(週)のドロップダウンにセットします。
      */
-/**
- * ==============================================================================
- * [Level 1] 選択曜日（月曜日）リスト更新
- * ==============================================================================
- * 元のロジックを維持しつつ、数値パースの安全性を高めています。
- */
-function updateMondays() {
-  const selYear = document.getElementById("sel-year");
-  const selMonth = document.getElementById("sel-month");
-  const selMonday = document.getElementById("sel-monday");
-  if (!selYear || !selMonth || !selMonday) return;
+    /**
+     * ==============================================================================
+     * 選択曜日（月曜日）リスト更新
+     * ==============================================================================
+     * 元のロジックを維持しつつ、数値パースの安全性を高めています。
+     */
+    function updateMondays() {
+      const selYear = document.getElementById("sel-year");
+      const selMonth = document.getElementById("sel-month");
+      const selMonday = document.getElementById("sel-monday");
+      if (!selYear || !selMonth || !selMonday) return;
 
-  const y = parseInt(selYear.value);
-  const m = parseInt(selMonth.value);
-  if (isNaN(y) || isNaN(m)) return;
+      const y = parseInt(selYear.value);
+      const m = parseInt(selMonth.value);
+      if (isNaN(y) || isNaN(m)) return;
   
-  selMonday.innerHTML = "";
-  const daysInMonth = new Date(y, m, 0).getDate(); 
-  for(let d=1; d<=daysInMonth; d++) {
-    const date = new Date(y, m - 1, d);
-    if(date.getDay() === 1) { // 月曜日
-      const opt = document.createElement("option");
-      opt.value = d;
-      opt.text = d;
-      selMonday.appendChild(opt);
+      selMonday.innerHTML = "";
+      const daysInMonth = new Date(y, m, 0).getDate(); 
+      for(let d=1; d<=daysInMonth; d++) {
+        const date = new Date(y, m - 1, d);
+        if(date.getDay() === 1) { // 月曜日
+          const opt = document.createElement("option");
+          opt.value = d;
+          opt.text = d;
+          selMonday.appendChild(opt);
+        }
+      }
     }
-  }
-}
     
-/**
- * ==============================================================================
- * [Level 1] 過去データの日付にドロップダウンを同期
- * ==============================================================================
- * 以前の「足りない年を一個だけ追加する安全装置」を撤廃し、
- * 「閲覧する年に合わせてリストをまるごと再構築」する手法に切り替えました。
- */
-function setDropdownsToDate(dateStr) {
-  if (!dateStr) return;
-  const parts = dateStr.split("-");
-  const y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
+    /**
+     * ==============================================================================
+     * 過去データの日付にドロップダウンを同期
+     * ==============================================================================
+     * 以前の「足りない年を一個だけ追加する安全装置」を撤廃し、
+     * 「閲覧する年に合わせてリストをまるごと再構築」する手法に切り替えました。
+     */
+    function setDropdownsToDate(dateStr) {
+      if (!dateStr) return;
+      const parts = dateStr.split("-");
+      const y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
   
-  // ----------------------------------------------------------------------------
-  // [Level 3] 1. リストの全生成（ここが修正の核）
-  // ----------------------------------------------------------------------------
-  // [Level 4] 2028年のデータなら、2028年を基準に [2028, 2027] を作り直します。
-  // これにより [2028, 2026] のような飛び番は発生しなくなります。
-  initDateDropdowns(new Date(y, m - 1, d));
+      // ----------------------------------------------------------------------------
+      //  1. リストの全生成（ここが修正の核）
+      // ----------------------------------------------------------------------------
+      // 2028年のデータなら、2028年を基準に [2028, 2027] を作り直します。
+      // これにより [2028, 2026] のような飛び番は発生しなくなります。
+      initDateDropdowns(new Date(y, m - 1, d));
 
-  // ----------------------------------------------------------------------------
-  // [Level 3] 2. 値のセットと後続処理
-  // ----------------------------------------------------------------------------
-  document.getElementById("sel-year").value = y;
-  document.getElementById("sel-month").value = m;
+      // ----------------------------------------------------------------------------
+      // 2. 値のセットと後続処理
+      // ----------------------------------------------------------------------------
+      document.getElementById("sel-year").value = y;
+      document.getElementById("sel-month").value = m;
   
-  updateMondays(); 
-  document.getElementById("sel-monday").value = d;
-}
+      updateMondays(); 
+      document.getElementById("sel-monday").value = d;
+    }
 
     
     /**
@@ -964,3 +964,4 @@ function setDropdownsToDate(dateStr) {
     window.onload = init;
   </script>
 </body>
+</html>
