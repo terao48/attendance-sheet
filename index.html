@@ -2,444 +2,956 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>配車・出欠表（親御さん用）</title>
+  <title>父兄出欠確認アプリ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  
   <style>
+    /* HTML コードv8.9 */
     /* ===================================================
-       1. 基本スタイルとレイアウト
+       1. 全体設定・ルート変数
     =================================================== */
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-      background-color: #f4f5f7;
+    /* アプリ全体で使い回すテーマカラーや基準サイズを定義します */
+    :root {
+      --main-green: #27ae60;    /* メインカラー（決定、参加など） */
+      --sat-blue: #2980b9;      /* 土曜日の背景色 */
+      --sun-red: #d35400;       /* 日・祝日の背景色 */
+      --bg-light: #f4f7f8;      /* アプリ全体の背景色（薄いグレー） */
+      --my-row-bg: #fffbe6;     /* ログインしている本人の行の背景色（薄い黄色） */
+      --name-col-width: 60px;   /* 左端の名前列の固定幅 */
+    }
+    
+    /* ベースレイアウト: 画面を固定し、意図しないブラウザスクロール（引っ張り）を抑制します */
+    html, body {
+      position: fixed; 
+      width: 100%; 
+      height: 100%;
+      overflow: hidden; 
+      overscroll-behavior: none; /* 下に引っ張ってリロードされるのを防ぐ */
+      font-family: sans-serif; 
+      margin: 0; 
+      background: var(--bg-light); 
       color: #333;
-      /* iOSのスクロールバウンス対策 */
-      overscroll-behavior-y: none;
     }
 
-    #app-container {
-      display: flex;
+    /* メインのコンテナ: 画面の高さ（100dvh）にぴったり合わせ、内部でレイアウトを組みます */
+    .container {
+      padding: 4px; 
+      display: flex; 
       flex-direction: column;
-      height: 100vh;
-      max-width: 800px;
-      margin: 0 auto;
-      background-color: #fff;
-      position: relative;
-    }
-
-    header {
-      background-color: #00B900; /* LINEグリーン */
-      color: white;
-      padding: 15px;
-      text-align: center;
-      font-weight: bold;
-      font-size: 1.1em;
-      z-index: 10;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    /* ===================================================
-       2. テーブル周りのスタイル
-    =================================================== */
-    #content-area {
-      flex: 1;
-      overflow-y: auto;
-      position: relative;
-    }
-
-    .table-wrapper {
-      width: 100%;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9em;
-    }
-
-    th, td {
-      border: 1px solid #ddd;
-      padding: 12px 8px;
-      text-align: center;
-    }
-
-    /* ヘッダーの固定 */
-    th {
-      background-color: #f8f9fa;
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
-
-    /* 左端の列（名前など）の固定 */
-    th:first-child, td:first-child {
-      position: sticky;
-      left: 0;
-      background-color: #f8f9fa;
-      z-index: 6;
-      font-weight: bold;
-    }
-    th:first-child {
-      z-index: 7; /* 左上のセルは一番上に */
-    }
-
-    /* 【変更点】インラインスタイルをCSSクラスに移行 */
-    .editable-cell {
-      cursor: pointer;
-      background-color: #ffffff;
-      transition: background-color 0.2s;
-    }
-
-    .editable-cell:active {
-      background-color: #e6f7ff; /* タップ時のフィードバック */
-    }
-
-    .status-ok { color: #00B900; font-weight: bold; }
-    .status-ng { color: #e74c3c; }
-    .status-pending { color: #95a5a6; }
-
-    /* コメントがある場合の視覚的ヒント */
-    .has-comment {
-      position: relative;
-    }
-    .has-comment::after {
-      content: '';
-      position: absolute;
-      top: 2px;
-      right: 2px;
-      border: 5px solid transparent;
-      border-top-color: #f39c12; /* 右上にオレンジの三角 */
-      border-right-color: #f39c12;
-    }
-
-    /* ===================================================
-       3. インジケーターとモーダル
-    =================================================== */
-    #scrollIndicator {
-      display: none;
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: rgba(0, 0, 0, 0.6);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 0.8em;
-      cursor: pointer;
-      z-index: 10;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-      animation: bounce 2s infinite;
-    }
-
-    @keyframes bounce {
-      0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
-      40% { transform: translateX(-50%) translateY(-10px); }
-      60% { transform: translateX(-50%) translateY(-5px); }
-    }
-
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background-color: rgba(0,0,0,0.5);
-      z-index: 100;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .modal-content {
-      background-color: white;
-      padding: 20px;
-      border-radius: 8px;
-      width: 80%;
-      max-width: 400px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-
-    .modal-content textarea {
-      width: 100%;
-      height: 100px;
-      margin: 10px 0;
-      padding: 10px;
+      height: 100%; 
+      height: 100dvh; 
+      overflow: hidden; 
       box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      resize: none;
     }
 
-    .btn-group {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 15px;
+    /* タイトル文字 */
+    h3 { 
+      text-align: center; 
+      font-size: 18px; 
+      margin: 6px 0; 
+      width: 100%; 
     }
 
-    .btn {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 4px;
-      font-weight: bold;
+    /* ===================================================
+       2. 過去データ閲覧モード用 UI
+    =================================================== */
+    /* 年月日を選択するコントロールバー */
+    .past-controls {
+      display: none; /* 初期は非表示、閲覧モード時のみ flex に変更 */
+      align-items: center; 
+      justify-content: center; 
+      padding: 6px; 
+      background: white; 
+      border-radius: 8px; 
+      margin-bottom: 8px; 
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    .past-controls select { 
+      padding: 2px 4px; 
+      font-size: 15px; 
+      border: 1px solid #ccc; 
+      border-radius: 4px; 
+      height: 36px; 
+      box-sizing: border-box;
+    }
+    .past-controls span { 
+      font-size: 14px; 
+      font-weight: bold; 
+      margin: 0 3px; 
+      color: #555; 
+    }
+    
+    /* 過去データ「表示」ボタン */
+    .btn-show-past {
+      padding: 0 16px; 
+      margin-left: 5px; 
+      background: var(--main-green); 
+      color: white; 
+      border: none; 
+      border-radius: 4px; 
+      font-weight: bold; 
       cursor: pointer;
+      font-size: 18px; 
+      height: 36px; 
+      line-height: 1; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      transition: all 0.3s ease; /* なめらかな変化アニメーション */
     }
-    .btn-cancel { background-color: #ccc; color: #333; }
-    .btn-save { background-color: #00B900; color: white; }
+
+    /* 日付変更後にボタンを強調（ハイライト）するためのクラス */
+    .btn-highlight {
+      background: #2ecc71 !important; /* 少し明るい緑に */
+      transform: translateY(-3px);   /* 上に少し浮かす */
+      box-shadow: 0 24px 36px rgba(0,0,0,0.2); /* 影を強くして浮遊感を出す */
+      animation: pulse-green 1.5s infinite;  /* 軽く点滅させて注意を引く */
+    }
+    @keyframes pulse-green {
+      0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+    }
+
+    /* ===================================================
+       3. 表（テーブル）のレイアウトとスクロール設定
+    =================================================== */
+    /* テーブルを囲む枠: 縦横のスクロールを担います */
+    .table-wrapper {
+      flex: 1; 
+      overflow-y: auto; 
+      overflow-x: auto;
+      border-radius: 8px; 
+      background: white; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 65px; /* 下部保存ボタンの領域を確保 */
+      position: relative;
+    }
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      table-layout: fixed; 
+      min-width: 100%; 
+    }
+
+    /* ヘッダー固定（縦スクロールしても上に残る） */
+    thead { position: sticky; top: 0; z-index: 10; }
+    th { background: var(--main-green); color: white; padding: 4px 0; font-size: 11px; border: none; font-weight: bold; }
+    th.sat { background: var(--sat-blue); }
+    th.sun { background: var(--sun-red); }
+
+    /* 各セルの高さとボーダー */
+    td { border-bottom: 1px solid #eee; height: 48px; text-align: center; }
+    .other-row td { height: 34px !important; }
+
+    /* 参加人数の集計表示用デザイン（ヘッダー内） */
+    .count-box { font-size: 10px; margin-top: 3px; padding: 2px 4px; background: rgba(0,0,0,0.15); font-weight: normal; line-height: 1.3; }
+    .count-row { display: flex; justify-content: space-between; }
+
+    /* 左端の名前列固定（横スクロールしても左に残る） */
+    .name-col-head, .name-cell {
+      position: sticky; 
+      left: 0; 
+      z-index: 11; /* thの10より高く設定 */
+      width: var(--name-col-width); 
+    }
+    .name-cell {
+      padding: 0 2px; font-weight: bold; font-size: 12px; text-align: left; 
+      background: #fafafa; border-right: 2px solid var(--main-green); 
+      word-break: break-all; z-index: 5;
+    }
+
+    /* 自分の行をハイライト */
+    .my-row { background-color: var(--my-row-bg) !important; }
+    .my-row .name-cell { background-color: var(--my-row-bg) !important; }
+
+    /* ===================================================
+       4. セルの状態（ステータス）とコメント行
+    =================================================== */
+    /* 〇、△、× のデザイン */
+    .status-cell { font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .status-〇 { color: var(--main-green); font-weight: bold; }
+    .status-△ { color: #f39c12; font-weight: bold; }
+    .status-× { color: #7f8c8d; font-weight: bold; }
+    .status-- { color: #ccc; }
+    
+    /* 期限切れでロックされたセルのデザイン */
+    .locked { background-color: #f2f2f2 !important; color: #bbb !important; cursor: not-allowed; }
+
+    /* コメント入力用の行 */
+    .com-row td { height: 34px !important; }
+    .com-row { background: #fff; }
+    .com-label { font-size: 10px; color: #888; padding: 2px 6px; border-right: 2px solid #ccc; font-weight: normal; line-height: 1.2; box-sizing: border-box; }
+    .com-label-top { text-align: left; display: block; margin-bottom: 2px; }
+    .com-label-bottom { text-align: right; display: block; }
+    .com-icon { font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+    .com-text { font-size: 10px; color: #666; cursor: pointer; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40px; }
+
+    /* ===================================================
+       5. 汎用 UI コンポーネント（フッター、ローディング等）
+    =================================================== */
+    /* 画面下部の保存ボタン固定エリア */
+    .footer-bar { 
+      position: fixed; bottom: 0; left: 0; width: 100%; 
+      padding: 10px; background: white; border-top: 1px solid #ddd; 
+      display: none; box-sizing: border-box; z-index: 100; 
+    }
+    .btn-save { 
+      width: 100%; background: var(--main-green); color: white; 
+      border: none; padding: 12px; border-radius: 8px; 
+      font-size: 16px; font-weight: bold; cursor: pointer; 
+    }
+    
+    /* ローディングスピナー（ぐるぐる回るアイコン） */
+    #loading { 
+      position: fixed; top:0; left:0; width:100%; height:100%; 
+      background:rgba(255,255,255,0.9); display:flex; flex-direction:column; 
+      align-items:center; justify-content:center; z-index:9999; 
+    }
+    .spinner { 
+      width: 40px; height: 40px; border: 4px solid #ddd; 
+      border-top: 4px solid var(--main-green); border-radius: 50%; 
+      animation: spin 1s linear infinite; 
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* スクロールインジケーター（「▼ 下に続きがあります」ボタン） */
+    .scroll-indicator {
+      position: fixed; bottom: 75px; left: 50%; transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7); color: white; padding: 6px 16px; border-radius: 20px;
+      font-size: 12px; font-weight: bold; display: none; z-index: 1000;
+      pointer-events: auto; cursor: pointer; -webkit-tap-highlight-color: transparent;
+      animation: bounce 1.5s infinite;
+    }
+    @keyframes bounce { 0%, 100% { bottom: 75px; } 50% { bottom: 65px; } }
+    
+    /* 閲覧モード時の微調整（保存ボタンがないため余白を詰める） */
+    .view-mode .table-wrapper { margin-bottom: 0; }
+    .view-mode td { height: 34px; }
+    .view-mode .scroll-indicator { bottom: 20px; }
+    .no-schedule-msg { padding: 40px 20px; text-align: center; font-weight: bold; color: #666; }
+
+    /* ===================================================
+       6. モーダルウィンドウ（コメント入力画面）
+    =================================================== */
+    .modal { 
+      position: fixed; top:0; left:0; width:100%; height:100%; 
+      background:rgba(0,0,0,0.6); display:none; align-items:center; 
+      justify-content:center; z-index:2000; 
+    }
+    .modal-box { background:white; width:85%; max-width:400px; border-radius:8px; padding:20px; box-sizing:border-box; }
+    .modal-title { font-weight:bold; margin-bottom:10px; font-size:14px; border-bottom: 2px solid var(--main-green); padding-bottom: 5px; }
+    .modal-input { width:100%; padding:10px; font-size:14px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; margin-bottom:15px; }
+    .modal-btns { display:flex; gap:10px; }
+    .modal-btn { flex:1; padding:10px; border:none; border-radius:4px; font-weight:bold; cursor:pointer; }
   </style>
 </head>
-<body>
+<body id="bodyTag">
 
-  <div id="app-container">
-    <header>今月の出欠・配車表</header>
+  <div id="loading">
+    <div class="spinner"></div>
+    <p id="loadingText">読込中...</p>
+  </div>
+
+  <div id="registration-view" style="display:none; padding:20px; text-align:center;">
+    <h3 id="regTitle">初回登録</h3>
+    <p>あなたのお名前を選択してください</p>
+    <select id="name-list" style="width:100%; padding:12px; margin:15px 0; font-size:16px;"></select>
+    <p style="font-size: 12px; color: #d35400; font-weight: bold; margin-top: 15px;">
+      ※ご自身のお名前がない場合や、誤ってアクセスした場合は管理者にご連絡ください。
+    </p>
+    <button class="btn-save" onclick="link()">登録する</button>
+  </div>
+
+  <div class="container" id="main-view" style="display:none;">
+    <h3 id="weekTitle"></h3>
     
-    <div id="content-area">
-      <div class="table-wrapper" id="table-wrapper">
-        </div>
-      <div id="bottom-anchor" style="height: 1px;"></div>
+    <div id="past-view-controls" class="past-controls">
+      <select id="sel-year"></select> <span>年</span>
+      <select id="sel-month"></select> <span>月</span>
+      <select id="sel-monday"></select> <span>日(週)</span>
+      <button class="btn-show-past" onclick="fetchPastData()">表示</button>
     </div>
 
-    <div id="scrollIndicator">▼ 下に続きがあります</div>
+    <div class="table-wrapper" id="content-area">
+      <table id="mainTable"></table>
+    </div>
+    
+    <div id="scrollIndicator" class="scroll-indicator">▼ 下に続きがあります</div>
+    
+    <div id="footer" class="footer-bar">
+      <button class="btn-save" onclick="saveAll()">変更を保存して閉じる</button>
+    </div>
   </div>
 
   <div id="commentModal" class="modal">
-    <div class="modal-content">
-      <h3 id="modalTitle" style="margin-top:0;">コメント編集</h3>
-      <textarea id="commentInput" placeholder="配車可能時間や遅刻などの連絡事項を入力してください"></textarea>
-      <div class="btn-group">
-        <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
-        <button class="btn btn-save" onclick="saveComment()">保存</button>
+    <div class="modal-box">
+      <div id="modalTitle" class="modal-title"></div>
+      <p id="modalDesc" style="font-size:11px; color:#666; margin:0 0 5px 0;"></p>
+      <input type="text" id="modalInput" class="modal-input" placeholder="特になし">
+      <div class="modal-btns">
+        <button class="modal-btn" style="background:#eee; color:#333;" onclick="closeModal()">キャンセル</button>
+        <button id="modalApplyBtn" class="modal-btn" style="background:var(--main-green); color:white;" onclick="applyComment()">決定</button>
       </div>
     </div>
   </div>
 
   <script>
     /* ===================================================
-       1. 状態管理（State）とセキュリティ設定
+       定数・全体変数定義
     =================================================== */
-
-    /**
-     * 【変更点】アプリ全体の状態を1つのオブジェクトで管理します。
-     * グローバル変数の散乱を防ぎ、状態の把握を容易にします。
-     */
-    const AppState = {
-      // 編集中のセルの座標
-      editTarget: {
-        rowIndex: -1,
-        colIndex: -1
-      },
-      // テーブルのデータ（GASなどから取得したと仮定）
-      tableData: {
-        headers: ["名前", "4/1(土)", "4/2(日)", "4/8(土)", "4/9(日)", "4/15(土)", "4/16(日)"],
-        rows: [
-          { name: "山田(父)", statuses: ["〇", "×", "〇(午後)", "×", "〇", "〇"], comments: ["", "", "13時から参加可能", "", "", ""] },
-          { name: "佐藤(母)", statuses: ["×", "〇", "×", "〇", "×", "〇"], comments: ["", "車出し可能(4人)", "", "", "", ""] },
-          { name: "鈴木(父)", statuses: ["〇", "〇", "〇", "〇", "〇", "〇"], comments: ["", "", "", "仕事のため遅刻かも", "", ""] },
-          { name: "高橋(母)", statuses: ["未", "未", "未", "未", "未", "未"], comments: ["", "", "", "", "", ""] },
-          // スクロール確認用にデータを水増し
-          { name: "田中(父)", statuses: ["〇", "×", "〇", "×", "〇", "〇"], comments: ["", "", "", "", "", ""] },
-          { name: "伊藤(母)", statuses: ["×", "〇", "×", "〇", "×", "〇"], comments: ["", "", "", "", "", ""] },
-          { name: "渡辺(父)", statuses: ["〇", "〇", "〇", "〇", "〇", "〇"], comments: ["", "", "", "", "", ""] }
-        ]
-      }
+    // GASのURLとLIFF IDの設定
+    const SETTINGS = {
+      GAS_URL: "https://script.google.com/macros/s/AKfycbz4M2wVSJmz1WwE5Aevak9JN0MPZTlbNeYiPDRaFATwtrF2vJdRh2zxIgGnJe05iNoe/exec",
+      LIFF_ID: "2009266487-GEiMe9Ei"
     };
 
-    /**
-     * 【変更点】XSS（クロスサイトスクリプティング）対策用関数。
-     * ユーザーが入力した文字列（名前やコメント）をHTMLに埋め込む前に必ず通します。
-     * @param {string} str - エスケープする文字列
-     * @returns {string} - 安全なHTML文字列
-     */
-    function escapeHTML(str) {
-      if (typeof str !== 'string') return str;
-      return str.replace(/[&<>'"]/g, function(match) {
-        const map = {
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          "'": '&#39;',
-          '"': '&quot;'
-        };
-        return map[match];
-      });
-    }
+    // 記号とラベルのマッピング設定
+    const UI_CONFIG = {
+      signs: ["〇", "△", "×", "-"],
+      labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
+    };
 
-    /* ===================================================
-       2. テーブル描画ロジック
-    =================================================== */
+    let MY_LINE_ID = "";       // LINEユーザーID
+    let IS_VIEW_MODE = false;  // 閲覧モードかどうかのフラグ
+    let DEADLINE_HOUR = 23;    // デフォルトの回答期限（前日23時）
+    let WEEK_LABEL = "";       // 対象週のラベル（例: 2026/04/13〜）
+    let days = [];             // 日付データの配列
+    let rawData = [];          // 取得した全父兄のデータ
+    let hasChanges = false;    // 編集が行われたかどうかのフラグ
+    let isSaving = false;      // 保存処理中かどうかのフラグ
 
-    /**
-     * 状態（AppState.tableData）を元にHTMLテーブルを生成し、画面に描画します。
-     */
-    function renderTable() {
-      const data = AppState.tableData;
-      let html = '<table>';
-      
-      // ヘッダー行の生成（escapeHTMLで保護）
-      html += '<thead><tr>';
-      data.headers.forEach(headerText => {
-        html += `<th>${escapeHTML(headerText)}</th>`;
-      });
-      html += '</tr></thead><tbody>';
-
-      // データ行の生成
-      data.rows.forEach((row, rIdx) => {
-        html += '<tr>';
-        // 名前列
-        html += `<td>${escapeHTML(row.name)}</td>`;
-        
-        // 出欠ステータス列
-        row.statuses.forEach((status, cIdx) => {
-          const comment = row.comments[cIdx];
-          
-          // CSSクラスの判定
-          let statusClass = "status-pending";
-          if (status.includes("〇")) statusClass = "status-ok";
-          if (status.includes("×")) statusClass = "status-ng";
-          const commentClass = comment ? "has-comment" : "";
-
-          // 【変更点】インラインonclickを廃止し、data-* 属性で座標を持たせる（イベント委譲のため）
-          // 【変更点】インラインのstyle="..."を廃止し、class属性に移行
-          html += `
-            <td class="editable-cell ${statusClass} ${commentClass}" 
-                data-ridx="${rIdx}" 
-                data-cidx="${cIdx}">
-              ${escapeHTML(status)}
-            </td>
-          `;
-        });
-        html += '</tr>';
-      });
-
-      html += '</tbody></table>';
-      document.getElementById('table-wrapper').innerHTML = html;
-    }
+    // 現在編集中のモーダルの対象インデックス
+    let currentEditFIdx = -1;  // 行（父兄）のインデックス
+    let currentEditDIdx = -1;  // 列（日付）のインデックス
 
 
     /* ===================================================
-       3. イベント処理（イベント委譲）
+       1. 初期化・通信処理
     =================================================== */
 
     /**
-     * 【変更点】イベント委譲（Event Delegation）の活用
-     * 個別のtd要素ではなく、親要素（table-wrapper）に1つだけクリックイベントを登録します。
-     * メモリ消費を抑え、再描画時にもイベントの再登録が不要になります。
+     * アプリ起動時の初期化処理を行います。
+     * 1. URLパラメータから閲覧モードかどうかを判定します。
+     * 2. LIFFアプリを初期化し、未ログインならログイン画面へ誘導します。
+     * 3. ログイン済みならLINE IDを取得し、データ読み込み（fetchData）を開始します。
      */
-    document.getElementById('table-wrapper').addEventListener('click', function(e) {
-      // クリックされた要素が editable-cell クラスを持っているか（またはその子孫か）確認
-      const cell = e.target.closest('.editable-cell');
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      IS_VIEW_MODE = (params.get('mode') === 'view');
       
-      if (cell) {
-        // data属性から座標を取得して文字列から数値に変換
-        const rIdx = parseInt(cell.getAttribute('data-ridx'), 10);
-        const cIdx = parseInt(cell.getAttribute('data-cidx'), 10);
-        openModal(rIdx, cIdx);
+      if (IS_VIEW_MODE) {
+        document.getElementById("bodyTag").classList.add("view-mode");
       }
-    });
+
+      try {
+        await liff.init({ liffId: SETTINGS.LIFF_ID });
+        if (!liff.isLoggedIn()) { 
+          liff.login(); 
+          return; 
+        }
+        
+        const profile = liff.getDecodedIDToken();
+        MY_LINE_ID = profile.sub;
+        
+        await fetchData(); 
+      } catch (e) {
+        document.getElementById("loading").style.display = "none";
+        console.error(e);
+        alert("初期化または通信エラーが発生しました\n\n詳細: " + e.message);
+      }
+    }
+
+    /**
+     * 指定されたURLに対してfetch通信を行い、指定時間を超えた場合はタイムアウトさせます。
+     * 電波の悪い環境で通信が永遠に止まるのを防ぎます。
+     * @param {string} url - 通信先のURL
+     * @param {Object} options - fetchのオプション（省略可）
+     * @param {number} timeout - タイムアウトまでのミリ秒数（デフォルト15秒）
+     * @returns {Promise<Response>} サーバーからのレスポンス
+     */
+    async function fetchWithTimeout(url, options = {}, timeout = 15000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+      } catch (e) {
+        clearTimeout(id);
+        if (e.name === 'AbortError') throw new Error("通信タイムアウト");
+        throw e;
+      }
+    }
+
+    /**
+     * サーバー(GAS)から出欠データを取得します。
+     * 通信に失敗した場合は、最大2回まで自動でリトライを行います。
+     * @param {number} retryCount - 現在のリトライ回数
+     * @param {string|null} targetDateStr - 過去データを検索する際の日付文字列 (例: "2026-04-13")
+     */
+    async function fetchData(retryCount = 0, targetDateStr = null) {
+      const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
+      let url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
+      
+      if (targetDateStr) {
+        url += `&targetDate=${targetDateStr}`;
+      }
+
+      try {
+        const res = await fetchWithTimeout(url);
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+        
+        const data = await res.json();
+        if (data.status === "error") throw new Error("GAS側エラー: " + data.message);
+
+        // ページタイトルを動的に設定
+        if (data.data && data.data.title) {
+          document.title = data.data.title;
+        }
+
+        if (data.status === "success") {
+          // スケジュールがない場合の処理
+          if (data.data.noSchedule) {
+            document.getElementById("loading").style.display = "none";
+            document.getElementById("main-view").style.display = "flex";
+            document.getElementById("weekTitle").innerText = "(未設定)";
+            document.getElementById("content-area").innerHTML = '<div class="no-schedule-msg">現在、有効なスケジュールはありません</div>';
+            return;
+          }
+
+          // 変数にデータを格納
+          WEEK_LABEL = data.data.weekLabel;
+          days = data.data.dates;
+          rawData = data.data.families;
+          if (data.data.deadlineHour !== undefined) DEADLINE_HOUR = data.data.deadlineHour;
+
+          // メインUIの表示切り替え
+          document.getElementById("main-view").style.display = "flex";
+          
+          if (IS_VIEW_MODE) {
+            document.getElementById("weekTitle").style.display = "none";
+            document.getElementById("past-view-controls").style.display = "flex";
+            // 閲覧モード時のドロップダウン初期化
+            if (document.getElementById("sel-year").options.length === 0) initDateDropdowns();
+            if (data.data.baseDateStr) setDropdownsToDate(data.data.baseDateStr);
+          } else {
+            document.getElementById("weekTitle").style.display = "block";
+            document.getElementById("past-view-controls").style.display = "none";
+            document.getElementById("footer").style.display = "block";
+
+            // 本日の日付を生成してタイトル横に表示
+            const now = new Date();
+            const weekStrs = ["日", "月", "火", "水", "木", "金", "土"];
+            const todayStr = `${now.getMonth() + 1}/${now.getDate()}(${weekStrs[now.getDay()]})`;
+            document.getElementById("weekTitle").innerHTML = `${data.data.weekLabel} <span style="font-size: 14px; color: #555; margin-left: 8px;">本日：${todayStr}</span>`;
+          }
+
+          document.getElementById("loading").style.display = "none";
+          render(); // テーブルの描画を実行
+
+        } else if (data.status === "unregistered") {
+          // 初回登録画面の表示処理
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("registration-view").style.display = "block";
+          document.getElementById("regTitle").innerText = data.data.title || "父兄出欠確認アプリ";
+          
+          const select = document.getElementById("name-list");
+          select.innerHTML = ""; 
+          data.list.forEach(item => {
+            let opt = document.createElement("option");
+            opt.value = item.id;
+            opt.text = item.name;
+            select.appendChild(opt);
+          });
+        }
+
+      } catch (e) {
+        if (retryCount < 2) {
+          // エラー時は500ms待ってから再試行
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return await fetchData(retryCount + 1, targetDateStr);
+        }
+        document.getElementById("loading").style.display = "none";
+        console.error(e);
+        alert("通信エラー、またはタイムアウトが発生しました\n電波の良い所で再読み込みしてください");
+      }
+    }
+
+    /**
+     * 初回登録時にLINE IDと名前を紐付けるための通信を行います。
+     */
+    async function link() {
+      const sid = document.getElementById("name-list").value;
+      document.getElementById("loading").style.display = "flex";
+      try {
+        await fetchWithTimeout(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}`);
+        window.location.reload(); // 登録成功後、画面をリロードしてメイン画面へ
+      } catch (e) {
+        alert("登録エラーが発生しました");
+        document.getElementById("loading").style.display = "none";
+      }
+    }
+
+    /**
+     * 編集内容をGASに保存し、完了後にLINEアプリを閉じます。
+     */
+    async function saveAll() {
+      if (!hasChanges) { 
+        liff.closeWindow(); 
+        return; 
+      }
+      if (isSaving) return; // 二重送信防止
+      isSaving = true;
+
+      const loader = document.getElementById("loading");
+      document.getElementById("loadingText").innerText = "保存中...";
+      loader.style.display = "flex";
+
+      // ログイン中ユーザー自身のデータのみを抽出して送信ペイロードを作成
+      const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
+      const payload = days.map((d, i) => ({
+        weekLabel: WEEK_LABEL,
+        dateLabel: d.label, 
+        familyId: myData.id,
+        status: myData.statuses[i],
+        comment: myData.commentStatus[i] || ""
+      }));
+
+      try {
+        const res = await fetchWithTimeout(`${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&payload=${encodeURIComponent(JSON.stringify(payload))}`);
+        if (!res.ok) throw new Error("HTTP Error");
+        
+        // 保存完了後、少し待ってからウィンドウを閉じる
+        setTimeout(() => { liff.closeWindow(); }, 500);
+      } catch (e) {
+        alert("保存エラーが発生しました\n\n通信環境を確認して再度お試しください");
+        loader.style.display = "none"; 
+        isSaving = false;
+      }
+    }
 
 
     /* ===================================================
-       4. モーダル制御ロジック
+       2. 過去データ閲覧モード用関数
+    =================================================== */
+    /**
+     * ==============================================================================
+     * 過去データ閲覧モード用：ドロップダウン初期化・再構築
+     * ==============================================================================
+     * 年・月の選択肢を生成します。引数に日付を渡すことで、その年に合わせた
+     * 適切な範囲（2028年なら [2028, 2027] 等）にリストを書き換えます。
+     * *  インターフェース仕様
+     * @param {any} arg - 基準日（Date型, String型, または Event）。
+     */
+    function initDateDropdowns(arg) {
+      // ----------------------------------------------------------------------------
+      //  1. 基準日の判定（Eventオブジェクト誤爆防止）
+      // ----------------------------------------------------------------------------
+      let baseDate = new Date();
+      if (arg instanceof Date && !isNaN(arg.getTime())) {
+        baseDate = arg;
+      } else if (typeof arg === 'string' && !isNaN(new Date(arg).getTime())) {
+        baseDate = new Date(arg);
+      }
+      //  argがEventの場合は無視して「今日」を基準にする（読込停止を防止）
+
+      const selYear = document.getElementById("sel-year");
+      const selMonth = document.getElementById("sel-month");
+      const selMonday = document.getElementById("sel-monday");
+      if (!selYear || !selMonth) return;
+
+      // ----------------------------------------------------------------------------
+      //  2. 年・月の選択肢生成（再構築ロジック）
+      // ----------------------------------------------------------------------------
+      const currentYear = baseDate.getFullYear();
+      const currentMonth = baseDate.getMonth(); 
+
+      //  12月なら翌年を追加。システム開始の2026年を下限とする。
+      const maxYear = (currentMonth === 11) ? currentYear + 1 : currentYear;
+      const minYear = Math.max(2026, currentYear - 1);
+
+      //  既存のHTMLを一度空にして生成（[2028, 2026] の不連続を解消）
+      let yearHtml = "";
+      for (let y = maxYear; y >= minYear; y--) {
+        yearHtml += `<option value="${y}">${y}</option>`;
+      }
+      selYear.innerHTML = yearHtml;
+  
+      let monthHtml = "";
+      for(let i=1; i<=12; i++) monthHtml += `<option value="${i}">${i}</option>`;
+      selMonth.innerHTML = monthHtml;
+
+      // ----------------------------------------------------------------------------
+      //  3. イベントリスナーの設定（初回のみ）
+      // ----------------------------------------------------------------------------
+      //  既にリスナーが登録されている場合はスキップする（多重登録・停止防止）
+      if (!selYear.dataset.listener) {
+        const btn = document.querySelector(".btn-show-past");
+    
+        selYear.addEventListener("change", () => { updateMondays(); if(btn) btn.classList.add("btn-highlight"); });
+        selMonth.addEventListener("change", () => { updateMondays(); if(btn) btn.classList.add("btn-highlight"); });
+        if(selMonday) {
+          selMonday.addEventListener("change", () => { if(btn) btn.classList.add("btn-highlight"); });
+        }
+    
+        // リスナー登録済みフラグを立てる
+        selYear.dataset.listener = "true";
+      }
+
+      // 最初の一回だけ月曜日リストを構築
+      updateMondays();
+    }
+
+    /**
+     * 選択されている「年・月」に基づいて、その月にある「月曜日」の日付だけを計算し、
+     * 日(週)のドロップダウンにセットします。
+     */
+    /**
+     * ==============================================================================
+     * 選択曜日（月曜日）リスト更新
+     * ==============================================================================
+     * 元のロジックを維持しつつ、数値パースの安全性を高めています。
+     */
+    function updateMondays() {
+      const selYear = document.getElementById("sel-year");
+      const selMonth = document.getElementById("sel-month");
+      const selMonday = document.getElementById("sel-monday");
+      if (!selYear || !selMonth || !selMonday) return;
+
+      const y = parseInt(selYear.value);
+      const m = parseInt(selMonth.value);
+      if (isNaN(y) || isNaN(m)) return;
+  
+      selMonday.innerHTML = "";
+      const daysInMonth = new Date(y, m, 0).getDate(); 
+      for(let d=1; d<=daysInMonth; d++) {
+        const date = new Date(y, m - 1, d);
+        if(date.getDay() === 1) { // 月曜日
+          const opt = document.createElement("option");
+          opt.value = d;
+          opt.text = d;
+          selMonday.appendChild(opt);
+        }
+      }
+    }
+    
+    /**
+     * ==============================================================================
+     * 過去データの日付にドロップダウンを同期
+     * ==============================================================================
+     * 以前の「足りない年を一個だけ追加する安全装置」を撤廃し、
+     * 「閲覧する年に合わせてリストをまるごと再構築」する手法に切り替えました。
+     */
+    function setDropdownsToDate(dateStr) {
+      if (!dateStr) return;
+      const parts = dateStr.split("-");
+      const y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
+  
+      // ----------------------------------------------------------------------------
+      //  1. リストの全生成（ここが修正の核）
+      // ----------------------------------------------------------------------------
+      // 2028年のデータなら、2028年を基準に [2028, 2027] を作り直します。
+      // これにより [2028, 2026] のような飛び番は発生しなくなります。
+      initDateDropdowns(new Date(y, m - 1, d));
+
+      // ----------------------------------------------------------------------------
+      // 2. 値のセットと後続処理
+      // ----------------------------------------------------------------------------
+      document.getElementById("sel-year").value = y;
+      document.getElementById("sel-month").value = m;
+  
+      updateMondays(); 
+      document.getElementById("sel-monday").value = d;
+    }
+
+    
+    /**
+     * ドロップダウンで指定した日付のデータをサーバーから取得します。
+     */
+    function fetchPastData() {
+      // 検索開始時にボタンの強調を解除
+      document.querySelector(".btn-show-past").classList.remove("btn-highlight");
+
+      const y = document.getElementById("sel-year").value;
+      const m = String(document.getElementById("sel-month").value).padStart(2, '0');
+      const d = String(document.getElementById("sel-monday").value).padStart(2, '0');
+      const targetDateStr = `${y}-${m}-${d}`;
+      
+      document.getElementById("main-view").style.display = "none";
+      document.getElementById("loading").style.display = "flex";
+      document.getElementById("loadingText").innerText = "データ取得中...";
+      
+      fetchData(0, targetDateStr);
+    }
+
+
+    /* ===================================================
+       3. メインUI描画・操作関数
     =================================================== */
 
     /**
-     * モーダルウィンドウを開き、対象セルのデータをセットします。
+     * 取得したデータ（rawData）を元に、HTMLのテーブル構造を生成し画面に描画します。
+     * 日付ごとの各ステータス（〇、△、×）の合計人数も計算してヘッダーに表示します。
      */
-    function openModal(rIdx, cIdx) {
-      // 状態の更新
-      AppState.editTarget.rowIndex = rIdx;
-      AppState.editTarget.colIndex = cIdx;
+    function render() {
+      if (!days || days.length === 0) return;
 
-      // 対象データの取得
-      const rowData = AppState.tableData.rows[rIdx];
-      const dateText = AppState.tableData.headers[cIdx + 1]; // +1 は名前列の分
-      const currentComment = rowData.comments[cIdx];
+      // 日付ごとの集計配列を初期化
+      const totals = days.map(() => {
+        let obj = {};
+        UI_CONFIG.signs.forEach(s => obj[s] = 0);
+        return obj;
+      });
 
-      // UIの更新（ここはtextContent等を使うので自動エスケープされます）
-      document.getElementById("modalTitle").textContent = `${rowData.name} - ${dateText}`;
-      document.getElementById("commentInput").value = currentComment;
+      // 各父兄のステータスを集計
+      rawData.forEach(f => {
+        f.statuses.forEach((s, i) => {
+          if (totals[i].hasOwnProperty(s)) totals[i][s]++;
+        });
+      });
+
+      // テーブルのヘッダー（日付と集計）を構築
+      let html = `<thead><tr><th class="name-col-head">団員<br>父兄</th>`;
+      days.forEach((d, i) => {
+        let cls = (d.label.includes("日") || d.label.includes("祝")) ? "sun" : d.label.includes("土") ? "sat" : "";
+        html += `<th class="${cls}">${d.label}<div class="count-box">`;
+        UI_CONFIG.signs.forEach(s => {
+          html += `<div class="count-row"><span>${s}${UI_CONFIG.labels[s]}</span><span>${totals[i][s]}</span></div>`;
+        });
+        html += `</div></th>`;
+      });
+      html += "</tr></thead><tbody>";
+
+      // テーブルのボディ（各父兄の行）を構築
+      rawData.forEach((f, fIdx) => {
+        const isMe = (!IS_VIEW_MODE && MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
+        const rowClass = isMe ? 'my-row' : 'other-row';
+        html += `<tr class="${rowClass}"><td class="name-cell">${f.name}</td>`;
+        
+        // ステータス（〇△×）のセルを生成
+        f.statuses.forEach((s, dIdx) => {
+          const isLocked = days[dIdx].isLocked;
+          const canEdit = !IS_VIEW_MODE && isMe;
+          // 編集権限があればクリックイベント（toggle）を追加
+          const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
+          const lockClass = isLocked ? "locked" : "";
+          html += `<td class="status-cell status-${s} ${lockClass}" ${clickAttr}>${s}</td>`;
+        });
+        html += "</tr>";
+
+        // コメント入力行の生成（本人の行、または既にコメントが存在する場合のみ表示）
+        const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
+        if (isMe || hasComment) {
+          html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label"><span class="com-label-top">┗ 💬</span><span class="com-label-bottom">コメント</span></td>`;
+          f.commentStatus.forEach((c, dIdx) => {
+            const isLocked = days[dIdx].isLocked;
+            const lockClass = isLocked ? "locked" : "";
+            
+            if (isMe && !IS_VIEW_MODE) {
+              // 編集モード時の本人セル：クリックでモーダルを開く
+              const icon = c ? '💬' : '＋';
+              html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
+            } else {
+              // 閲覧モード時：コメントがあればアイコン表示（クリックで中身を確認）
+              const displayTxt = c ? `<span class="com-text" onclick="viewModal('${f.name}', '${days[dIdx].label}', '${c}')">💬</span>` : '-';
+              html += `<td class="${lockClass}"><span class="com-icon">${displayTxt}</span></td>`;
+            }
+          });
+          html += "</tr>";
+        }
+      });
+
+      document.getElementById("mainTable").innerHTML = html + "</tbody>";
       
-      // モーダル表示
-      const modal = document.getElementById("commentModal");
-      modal.style.display = "flex";
+      // 描画後、少し待ってからスクロールインジケーターの表示判定を実行
+      setTimeout(checkScroll, 300);
     }
 
     /**
-     * 入力されたコメントを状態に保存し、テーブルを再描画します。
+     * セルがクリックされた際に、ステータス（〇→△→×→-）を順番に切り替えます。
+     * @param {number} fIdx - クリックされた行（父兄）のインデックス
+     * @param {number} dIdx - クリックされた列（日付）のインデックス
      */
-    function saveComment() {
-      const rIdx = AppState.editTarget.rowIndex;
-      const cIdx = AppState.editTarget.colIndex;
+    function toggle(fIdx, dIdx) {
+      if (days[dIdx].isLocked) {
+        alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません"); 
+        return;
+      }
       
-      if (rIdx === -1 || cIdx === -1) return;
+      const signs = UI_CONFIG.signs;
+      const current = rawData[fIdx].statuses[dIdx];
+      
+      // 次の記号を配列から取得して更新
+      rawData[fIdx].statuses[dIdx] = signs[(signs.indexOf(current) + 1) % signs.length];
+      hasChanges = true;
+      render(); // 変更を反映するために再描画
+    }
 
-      const newComment = document.getElementById("commentInput").value;
+
+    /* ===================================================
+       4. モーダル操作関連
+    =================================================== */
+
+    /**
+     * コメント編集用のモーダルウィンドウを開きます。
+     * @param {number} fIdx - 編集対象の父兄のインデックス
+     * @param {number} dIdx - 編集対象の日付のインデックス
+     */
+    function openModal(fIdx, dIdx) {
+      if (days[dIdx].isLocked) { 
+        alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません"); 
+        return; 
+      }
+      currentEditFIdx = fIdx; 
+      currentEditDIdx = dIdx;
       
-      // 状態の更新
-      AppState.tableData.rows[rIdx].comments[cIdx] = newComment;
+      document.getElementById("modalTitle").innerText = days[dIdx].label + " のコメント";
+      document.getElementById("modalDesc").innerText = "コメントを入力 (例: 17:30から参加)";
+      document.getElementById("modalDesc").style.display = "block";
+      document.getElementById("modalInput").value = rawData[fIdx].commentStatus[dIdx] || "";
+      document.getElementById("modalInput").readOnly = false;
+      document.getElementById("modalApplyBtn").style.display = "block";
+      document.getElementById("commentModal").style.display = "flex";
       
-      // 【GAS連携時はここにバックエンドへの送信処理(google.script.runなど)を書きます】
-      
-      // テーブルの再描画とモーダルを閉じる
-      renderTable();
-      closeModal();
+      // アニメーション完了後にフォーカスを当てる
+      setTimeout(() => document.getElementById("modalInput").focus(), 100);
     }
 
     /**
-     * モーダルウィンドウを閉じ、編集中状態をリセットします。
+     * コメント閲覧専用のモーダルウィンドウを開きます（編集不可）。
+     * @param {string} name - 父兄の名前
+     * @param {string} dateLabel - 日付のラベル
+     * @param {string} text - 表示するコメント内容
+     */
+    function viewModal(name, dateLabel, text) {
+      document.getElementById("modalTitle").innerText = `${name} ${dateLabel} のコメント`;
+      document.getElementById("modalDesc").style.display = "none";
+      document.getElementById("modalInput").value = text;
+      document.getElementById("modalInput").readOnly = true;
+      document.getElementById("modalApplyBtn").style.display = "none";
+      document.getElementById("commentModal").style.display = "flex";
+    }
+
+    /**
+     * モーダルに入力されたコメントをデータに適用し、モーダルを閉じます。
+     */
+    function applyComment() {
+      if (currentEditFIdx === -1) return;
+      const val = document.getElementById("modalInput").value;
+      rawData[currentEditFIdx].commentStatus[currentEditDIdx] = val;
+      hasChanges = true;
+      closeModal(); 
+      render(); // 変更を反映するために再描画
+    }
+
+    /**
+     * モーダルウィンドウを閉じ、編集中インデックスをリセットします。
      */
     function closeModal() {
       document.getElementById("commentModal").style.display = "none";
-      // 【変更点】AppState を使って状態をリセット
-      AppState.editTarget.rowIndex = -1; 
-      AppState.editTarget.colIndex = -1;
+      currentEditFIdx = -1; 
+      currentEditDIdx = -1;
     }
 
 
     /* ===================================================
-       5. スクロール制御関連（Intersection Observer）
+       5. スクロール制御関連
     =================================================== */
 
     /**
-     * 【変更点】Intersection Observer を使用した低負荷なスクロール判定
-     * 表の一番下にある #bottom-anchor が画面内に入ったかどうかを監視します。
+     * 画面のスクロール位置を判定し、「下に続きがあります」インジケーターの表示/非表示を切り替えます。
+     * リストが一番下までスクロールされるとインジケーターが消えます。
      */
-    function initScrollObserver() {
+    function checkScroll() {
+      const area = document.getElementById("content-area");
       const indicator = document.getElementById("scrollIndicator");
-      const anchor = document.getElementById("bottom-anchor");
-      const scrollArea = document.getElementById("content-area");
-
-      if (!anchor || !indicator || !scrollArea) return;
-
-      const observer = new IntersectionObserver((entries) => {
-        // アンカーが見えたらインジケーターを消す、見えなくなったら表示する
-        if (entries[0].isIntersecting) {
-          indicator.style.display = "none";
-        } else {
-          indicator.style.display = "block";
-        }
-      }, { 
-        root: scrollArea, // スクロール領域を基準にする
-        threshold: 0      // 1pxでも見えたら反応
-      });
-
-      observer.observe(anchor);
+      if (!area || !indicator) return;
+      
+      const scrollH = Math.round(area.scrollHeight);
+      const clientH = Math.round(area.clientHeight);
+      const scrollT = Math.round(area.scrollTop);
+      
+      const canScroll = scrollH > (clientH + 3);
+      // 下端に到達しているか判定（10pxの余裕を持たせる）
+      const isBottom = (scrollH - scrollT) <= (clientH + 10);
+      
+      if (canScroll && !isBottom) {
+        indicator.style.display = "block";
+      } else {
+        indicator.style.display = "none";
+      }
     }
 
-    // インジケーター（▼ボタン）が押された時の挙動
+    // スクロール時やウィンドウサイズ変更時にインジケーター判定を実行
+    document.getElementById("content-area").addEventListener("scroll", checkScroll);
+    window.addEventListener("resize", checkScroll);
+
+    /**
+     * 指定された要素内で、表の正確な終端（一番下）まで滑らかにスクロールさせます。
+     * @param {HTMLElement} element - スクロール対象の要素（table-wrapperなど）
+     * @param {number} duration - スクロールにかけるミリ秒数（小さくすると速くなる）
+     */
+    function slowScrollToBottom(element, duration) {
+      const table = element.querySelector('table');
+      const start = element.scrollTop;
+      
+      // 【重要】scrollHeightではなく、tableのoffsetHeight（純粋な表の高さ）を使います。
+      // これにより、余白（margin-bottom等）に惑わされず「表の最後の行」でピタッと止まります。
+      const tableHeight = table.offsetHeight;
+      const target = tableHeight - element.clientHeight;
+      const distance = target - start;
+
+      // すでに下端にいる場合は何もしない
+      if (distance <= 0) return;
+
+      // 【修正ポイント】CSSの「scroll-behavior: smooth」がJavaScriptの動きを
+      // 邪魔して速度が固定されないよう、一時的に「auto（即時移動）」に固定します。
+      const originalStyle = element.style.scrollBehavior;
+      element.style.scrollBehavior = 'auto'; 
+
+      let startTime = null;
+
+      // requestAnimationFrameを使って、指定時間かけてコマ送りアニメーションを行います。
+      function animation(currentTime) {
+        if (startTime === null) startTime = currentTime;
+        const timeElapsed = currentTime - startTime;
+        
+        // なめらかな加減速の計算（イージング）
+        const run = easeInOutQuad(timeElapsed, start, distance, duration);
+        element.scrollTop = run;
+
+        if (timeElapsed < duration) {
+          requestAnimationFrame(animation);
+        } else {
+          // アニメーション完了時に最終位置を補正し、CSSを元の状態に戻します
+          element.scrollTop = target;
+          element.style.scrollBehavior = originalStyle;
+        }
+      }
+
+      // イージング関数（最初はゆっくり、途中で速く、最後はまたゆっくり）
+      function easeInOutQuad(t, b, c, d) {
+        t /= d / 2;
+        if (t < 1) return c / 2 * t * t + b;
+        t--;
+        return -c / 2 * (t * (t - 2) - 1) + b;
+      }
+
+      requestAnimationFrame(animation);
+    }
+
+    // インジケーター（▼ボタン）が押された時の挙動を登録します
     document.getElementById("scrollIndicator").onclick = function() {
       const area = document.getElementById("content-area");
-      const table = area.querySelector('table');
-      
-      // ネイティブ機能によるスムーズスクロール（コードの大幅な簡略化）
-      area.scrollTo({
-        top: table.offsetHeight - area.clientHeight,
-        behavior: 'smooth'
-      });
+      // 1000ミリ秒（1秒）かけて下までスクロールします（数字を減らすと速くなります）
+      slowScrollToBottom(area, 1000); 
     };
 
     /**
      * iOS等のブラウザで、画面全体が引っ張られてリロード（バウンス）するのを防ぎます。
-     * テーブルの中身やモーダル内はスクロールできるように許可します。
+     * ただし、テーブルの中身やモーダル内はスクロールできるように許可します。
      */
     document.addEventListener('touchmove', function(e) {
       if (e.touches.length > 1) return; // ピンチズーム等は許可
@@ -448,16 +960,7 @@
       }
     }, { passive: false });
 
-
-    /* ===================================================
-       6. アプリの起動処理
-    =================================================== */
-    
-    function init() {
-      renderTable();
-      initScrollObserver();
-    }
-
+    // アプリの起動エントリポイント
     window.onload = init;
   </script>
 </body>
