@@ -330,6 +330,16 @@
     /* ===================================================
        1. 初期化・通信処理
     =================================================== */
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+      }
+    
     /**
      * アプリ起動時の初期化処理を行います。
      * 1. URLパラメータから閲覧モードかどうかを判定します。
@@ -729,7 +739,7 @@
       rawData.forEach((f, fIdx) => {
         const isMe = (!IS_VIEW_MODE && MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
         const rowClass = isMe ? 'my-row' : 'other-row';
-        html += `<tr class="${rowClass}"><td class="name-cell">${f.name}</td>`;
+        html += `<tr class="${rowClass}"><td class="name-cell">${escapeHtml(f.name)}</td>`;
         
         // ステータス（〇△×）のセルを生成
         f.statuses.forEach((s, dIdx) => {
@@ -756,7 +766,11 @@
               html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
             } else {
               // 閲覧モード時：コメントがあればアイコン表示（クリックで中身を確認）
-              const displayTxt = c ? `<span class="com-text" onclick="viewModal('${f.name}', '${days[dIdx].label}', '${c}')">💬</span>` : '-';
+              const safeName = escapeHtml(f.name);
+              const safeComment = escapeHtml(c);
+
+              const displayTxt = c  ? `<span class="com-text" onclick="viewModal('${safeName}', '${days[dIdx].label}', '${safeComment}')">💬</span>`  : '-';
+              // const displayTxt = c ? `<span class="com-text" onclick="viewModal('${f.name}', '${days[dIdx].label}', '${c}')">💬</span>` : '-';
               html += `<td class="${lockClass}"><span class="com-icon">${displayTxt}</span></td>`;
             }
           });
