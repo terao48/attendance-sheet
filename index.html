@@ -354,6 +354,8 @@
         
         const profile = liff.getDecodedIDToken();
         MY_LINE_ID = profile.sub;
+        // 追加
+        window.ID_TOKEN = liff.getIDToken();
         
         await fetchData(); 
       } catch (e) {
@@ -486,7 +488,7 @@
       const sid = document.getElementById("name-list").value;
       document.getElementById("loading").style.display = "flex";
       try {
-        await fetchWithTimeout(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=link&family_id=${sid}`);
+        await fetchWithTimeout(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&idToken=${ID_TOKEN}&action=link&family_id=${sid}`);  //トークンチェック追加
         window.location.reload(); // 登録成功後、画面をリロードしてメイン画面へ
       } catch (e) {
         alert("登録エラーが発生しました");
@@ -520,7 +522,7 @@
       }));
 
       try {
-        const res = await fetchWithTimeout(`${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&payload=${encodeURIComponent(JSON.stringify(payload))}`);
+        const res = await fetchWithTimeout(`${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&idToken=${ID_TOKEN}&payload=${encodeURIComponent(JSON.stringify(payload))}`);  //トークンチェック追加
         if (!res.ok) throw new Error("HTTP Error");
         
         // 保存完了後、少し待ってからウィンドウを閉じる
