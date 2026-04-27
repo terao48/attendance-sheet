@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>父出欠確認アプリ</title>
+  /* <title>父出欠確認アプリ</title> */
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   
@@ -301,7 +301,7 @@
     /* ===================================================
        定数・全体変数定義
     =================================================== */
-    const APP_TITLE = "父出欠確認アプリ test";
+    //const APP_TITLE = "父出欠確認アプリ test";
     
     // GASのURLとLIFF IDの設定
     const SETTINGS = {
@@ -332,7 +332,6 @@
     /* ===================================================
        1. 初期化・通信処理
     =================================================== */
-
     /**
      * アプリ起動時の初期化処理を行います。
      * 1. URLパラメータから閲覧モードかどうかを判定します。
@@ -340,7 +339,7 @@
      * 3. ログイン済みならLINE IDを取得し、データ読み込み（fetchData）を開始します。
      */
     async function init() {
-      document.title = APP_TITLE;
+      //document.title = APP_TITLE;
       
       const params = new URLSearchParams(window.location.search);
       IS_VIEW_MODE = (params.get('mode') === 'view');
