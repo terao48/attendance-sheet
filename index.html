@@ -307,6 +307,8 @@
       LIFF_ID: "2009266487-GEiMe9Ei"
     };
 
+    const APP_TITLE = "父出欠確認アプリ";
+    
     // 記号とラベルのマッピング設定
     const UI_CONFIG = {
       signs: ["〇", "△", "×", "-"],
@@ -347,6 +349,8 @@
      * 3. ログイン済みならLINE IDを取得し、データ読み込み（fetchData）を開始します。
      */
     async function init() {
+      document.title = APP_TITLE
+      
       const params = new URLSearchParams(window.location.search);
       IS_VIEW_MODE = (params.get('mode') === 'view');
       
@@ -466,7 +470,7 @@
           // 初回登録画面の表示処理
           document.getElementById("loading").style.display = "none";
           document.getElementById("registration-view").style.display = "block";
-          document.getElementById("regTitle").innerText = data.data.title || "父兄出欠確認アプリ";
+          document.getElementById("regTitle").innerText = data.data.title || APP_TITLE;
           
           const select = document.getElementById("name-list");
           select.innerHTML = ""; 
