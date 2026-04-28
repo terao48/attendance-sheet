@@ -705,7 +705,15 @@
     /* ===================================================
        3. メインUI描画・操作関数
     =================================================== */
-
+    function escapeJsString(str) {
+      return String(str || "")
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "");
+    }
+    
     /**
      * 取得したデータ（rawData）を元に、HTMLのテーブル構造を生成し画面に描画します。
      * 日付ごとの各ステータス（〇、△、×）の合計人数も計算してヘッダーに表示します。
@@ -752,7 +760,7 @@
           // 編集権限があればクリックイベント（toggle）を追加
           const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
           const lockClass = isLocked ? "locked" : "";
-          html += `<td class="status-cell status-${s} ${lockClass}" ${clickAttr}>${s}</td>`;
+          html += `<td class="status-cell status-${s} ${lockClass}" ${clickAttr}>${escapeHtml(s)}</td>`;
         });
         html += "</tr>";
 
@@ -770,11 +778,17 @@
               html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
             } else {
               // 閲覧モード時：コメントがあればアイコン表示（クリックで中身を確認）
-              const safeName = escapeHtml(f.name);
-              const safeComment = escapeHtml(c);
+              const safeNameJs = escapeJsString(f.name);
+              const safeLabelJs = escapeJsString(days[dIdx].label);
+              const safeCommentJs = escapeJsString(c);
 
-              const displayTxt = c  ? `<span class="com-text" onclick="viewModal('${safeName}', '${days[dIdx].label}', '${safeComment}')">💬</span>`  : '-';
+              const displayTxt = c  ? `<span class="com-text" onclick="viewModal('${safeNameJs}', '${safeLabelJs}', '${safeCommentJs}')">💬</span>`  : '-';              
+              
+              //const safeName = escapeHtml(f.name);
+              //const safeComment = escapeHtml(c);
+              //const displayTxt = c  ? `<span class="com-text" onclick="viewModal('${safeName}', '${days[dIdx].label}', '${safeComment}')">💬</span>`  : '-';
               // const displayTxt = c ? `<span class="com-text" onclick="viewModal('${f.name}', '${days[dIdx].label}', '${c}')">💬</span>` : '-';
+
               html += `<td class="${lockClass}"><span class="com-icon">${displayTxt}</span></td>`;
             }
           });
