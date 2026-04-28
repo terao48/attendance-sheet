@@ -739,9 +739,7 @@
       let html = `<thead><tr><th class="name-col-head">団員<br>父兄</th>`;
       days.forEach((d, i) => {
         let cls = (d.label.includes("日") || d.label.includes("祝")) ? "sun" : d.label.includes("土") ? "sat" : "";
-        
         html += `<th class="${cls}">${escapeHtml(d.label)}<div class="count-box">`;
-        // html += `<th class="${cls}">${d.label}<div class="count-box">`;
         
         UI_CONFIG.signs.forEach(s => {
           html += `<div class="count-row"><span>${escapeHtml(s)}${escapeHtml(UI_CONFIG.labels[s])}</span><span>${totals[i][s]}</span></div>`;
@@ -766,7 +764,6 @@
           const safeStatusClass = ['〇','△','×','-'].includes(s) ? s : '-';
 
           html += `<td class="status-cell status-${safeStatusClass} ${lockClass}" ${clickAttr}>${escapeHtml(s)}</td>`;
-          // html += `<td class="status-cell status-${s} ${lockClass}" ${clickAttr}>${escapeHtml(s)}</td>`;
         });
         html += "</tr>";
 
@@ -787,14 +784,7 @@
               const safeNameJs = escapeJsString(f.name);
               const safeLabelJs = escapeJsString(days[dIdx].label);
               const safeCommentJs = escapeJsString(c);
-
               const displayTxt = c  ? `<span class="com-text" onclick="viewModal('${safeNameJs}', '${safeLabelJs}', '${safeCommentJs}')">💬</span>`  : '-';              
-              
-              //const safeName = escapeHtml(f.name);
-              //const safeComment = escapeHtml(c);
-              //const displayTxt = c  ? `<span class="com-text" onclick="viewModal('${safeName}', '${days[dIdx].label}', '${safeComment}')">💬</span>`  : '-';
-              // const displayTxt = c ? `<span class="com-text" onclick="viewModal('${f.name}', '${days[dIdx].label}', '${c}')">💬</span>` : '-';
-
               html += `<td class="${lockClass}"><span class="com-icon">${displayTxt}</span></td>`;
             }
           });
