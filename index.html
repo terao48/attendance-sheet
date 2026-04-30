@@ -7,7 +7,16 @@
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   
   <style>
-    /* HTML コードv8.9  GitHub terao643→48 */
+    /* ===================================================
+       Level 2: UIスタイル定義（CSS）
+       ===================================================
+       ・画面レイアウト
+       ・テーマカラー
+       ・テーブル/UIコンポーネント
+       ・モーダル/スクロール制御
+       =================================================== */
+    
+    /* HTML コードv9.0 */
     /* ===================================================
        1. 全体設定・ルート変数
     =================================================== */
@@ -248,12 +257,18 @@
   </style>
 </head>
 <body id="bodyTag">
+  
+  <!-- ===================================================
+       Level 3: UI構造（DOM構成）
+       =================================================== -->
 
+  <!-- ローディング表示 -->
   <div id="loading">
     <div class="spinner"></div>
     <p id="loadingText">読込中...</p>
   </div>
 
+  <!-- 初回登録画面 -->
   <div id="registration-view" style="display:none; padding:20px; text-align:center;">
     <h3 id="regTitle">初回登録</h3>
     <p>あなたのお名前を選択してください</p>
@@ -264,9 +279,11 @@
     <button class="btn-save" onclick="link()">登録する</button>
   </div>
 
+  <!-- メイン画面 -->
   <div class="container" id="main-view" style="display:none;">
     <h3 id="weekTitle"></h3>
-    
+  
+    <!-- 過去データ選択UI -->  
     <div id="past-view-controls" class="past-controls">
       <select id="sel-year"></select> <span>年</span>
       <select id="sel-month"></select> <span>月</span>
@@ -274,17 +291,21 @@
       <button class="btn-show-past" onclick="fetchPastData()">表示</button>
     </div>
 
+    <!-- テーブル表示領域 -->
     <div class="table-wrapper" id="content-area">
       <table id="mainTable"></table>
     </div>
-    
+
+    <!-- スクロール補助UI -->
     <div id="scrollIndicator" class="scroll-indicator">▼ 下に続きがあります</div>
     
+    <!-- 保存ボタン -->
     <div id="footer" class="footer-bar">
       <button class="btn-save" onclick="saveAll()">変更を保存して閉じる</button>
     </div>
   </div>
 
+  <!-- コメントモーダル --> 
   <div id="commentModal" class="modal">
     <div class="modal-box">
       <div id="modalTitle" class="modal-title"></div>
@@ -298,8 +319,18 @@
   </div>
 
   <script>
+  /**
+  * ==========================================
+  * Level 1: フロントエンド概要（LIFF UI）
+  * ==========================================
+  * ・LINE LIFF上で動作する出欠管理UI
+  * ・GASと通信しデータ取得/更新を行う
+  * ・閲覧モード／編集モード切替対応
+  * ==========================================
+  */
+
     /* ===================================================
-       定数・全体変数定義
+     Level 2: 設定・状態管理　（定数・全体変数定義）
     =================================================== */
     // GASのURLとLIFF IDの設定
     const SETTINGS = {
@@ -330,8 +361,13 @@
 
 
     /* ===================================================
-       1. 初期化・通信処理
+       Level 3: コア処理（初期化・通信）
     =================================================== */
+    
+    /* ===================================================
+       1. 初期化処理（LIFFログイン → データ取得）
+    =================================================== */
+
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str)
@@ -701,6 +737,10 @@
       fetchData(0, targetDateStr);
     }
 
+
+    /* ===================================================
+       Level 4: UI操作・補助処理
+    =================================================== */
 
     /* ===================================================
        3. メインUI描画・操作関数
