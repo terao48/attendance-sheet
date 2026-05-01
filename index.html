@@ -384,6 +384,9 @@
      * 2. LIFFアプリを初期化し、未ログインならログイン画面へ誘導します。
      * 3. ログイン済みならLINE IDを取得し、データ読み込み（fetchData）を開始します。
      */
+    // ⚠ 重要: GASとの通信起点
+    // ・GAS doGetのaction仕様と完全一致が必要
+    // ・URLパラメータ変更は通信エラーの原因
     async function init() {
       document.title = APP_TITLE
       
@@ -442,6 +445,9 @@
      * @param {number} retryCount - 現在のリトライ回数
      * @param {string|null} targetDateStr - 過去データを検索する際の日付文字列 (例: "2026-04-13")
      */
+    // ⚠ 重要: GASとの通信起点
+    // ・GAS doGetのaction仕様と完全一致が必要
+    // ・URLパラメータ変更は通信エラーの原因
     async function fetchData(retryCount = 0, targetDateStr = null) {
       const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
       let url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
@@ -548,6 +554,10 @@
     /**
      * 編集内容をGASに保存し、完了後にLINEアプリを閉じます。
      */
+    // ⚠ 最重要: データ更新の唯一の入口
+    // ・payload構造はGAS processUpdateAllと完全一致必須
+    // ・key名/順序変更は禁止
+    // ・エンコード処理削除は通信失敗の原因
     async function saveAll() {
       if (!hasChanges) { 
         liff.closeWindow(); 
@@ -565,6 +575,7 @@
       const payload = days.map((d, i) => ({
         weekLabel: WEEK_LABEL,
         dateLabel: d.label, 
+        dateKey: d.dateKey,   // ★dateKey追加
         familyId: myData.id,
         status: myData.statuses[i],
         comment: myData.commentStatus[i] || ""
@@ -758,6 +769,9 @@
      * 取得したデータ（rawData）を元に、HTMLのテーブル構造を生成し画面に描画します。
      * 日付ごとの各ステータス（〇、△、×）の合計人数も計算してヘッダーに表示します。
      */
+    // ⚠ 最重要: UI描画の中核
+    // ・getInitialDataのレスポンス構造に完全依存
+    // ・dates / families構造変更は即表示崩壊
     function render() {
       if (!days || days.length === 0) return;
 
@@ -843,6 +857,9 @@
      * @param {number} fIdx - クリックされた行（父兄）のインデックス
      * @param {number} dIdx - クリックされた列（日付）のインデックス
      */
+    // ⚠ 注意: ステータス更新ロジック
+    // ・UI_CONFIG.signs配列順に依存
+    // ・記号変更時はGAS側と必ず同期
     function toggle(fIdx, dIdx) {
       if (days[dIdx].isLocked) {
         alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません"); 
@@ -868,6 +885,9 @@
      * @param {number} fIdx - 編集対象の父兄のインデックス
      * @param {number} dIdx - 編集対象の日付のインデックス
      */
+    // ⚠ 注意: コメント編集処理
+    // ・rawData構造に依存
+    // ・indexズレが起きると別人データ書き換えリスクあり
     function openModal(fIdx, dIdx) {
       if (days[dIdx].isLocked) { 
         alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません"); 
@@ -906,6 +926,9 @@
     /**
      * モーダルに入力されたコメントをデータに適用し、モーダルを閉じます。
      */
+    // ⚠ 注意: コメント編集処理
+    // ・rawData構造に依存
+    // ・indexズレが起きると別人データ書き換えリスクあり
     function applyComment() {
       if (currentEditFIdx === -1) return;
       const val = document.getElementById("modalInput").value;
