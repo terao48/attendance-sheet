@@ -571,14 +571,19 @@
       loader.style.display = "flex";
 
       // ログイン中ユーザー自身のデータのみを抽出して送信ペイロードを作成
-      const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
+      // const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
+      const myData = rawData.find(f => f.lineIds.includes(MY_LINE_ID));
+      
       const payload = days.map((d, i) => ({
-        weekLabel: WEEK_LABEL,
-        dateLabel: d.label, 
-        dateKey: d.dateKey,   // ★dateKey追加
-        familyId: myData.id,
-        status: myData.statuses[i],
-        comment: myData.commentStatus[i] || ""
+        const key = d.dateKey;
+        return{
+          weekLabel: WEEK_LABEL,
+          dateLabel: d.label, 
+          dateKey: d.dateKey,   // ★dateKey追加
+          familyId: myData.id,
+          status: myData.statuses?.[key] || "-",      // ★dateKey追加
+          comment: myData.commentStatus?.[key] || ""  // ★dateKey追加
+        };
       }));
 
       try {
@@ -784,7 +789,9 @@
 
       // 各父兄のステータスを集計
       rawData.forEach(f => {
-        f.statuses.forEach((s, i) => {
+        days.forEach((d, i) => {
+          const key = d.dateKey;              //dateKey 追加
+          const s = f.statuses?.[key] || "-";
           if (totals[i].hasOwnProperty(s)) totals[i][s]++;
         });
       });
@@ -809,37 +816,46 @@
         html += `<tr class="${rowClass}"><td class="name-cell">${escapeHtml(f.name)}</td>`;
         
         // ステータス（〇△×）のセルを生成
-        f.statuses.forEach((s, dIdx) => {
-          const isLocked = days[dIdx].isLocked;
-          const canEdit = !IS_VIEW_MODE && isMe;
+        days.forEach((d, dIdx) => {
+          const key = d.dateKey;              //dateKey 追加
+          const s = f.statuses?.[key] || "-";
           // 編集権限があればクリックイベント（toggle）を追加
+          const isLocked = d.isLocked;
+          const canEdit = !IS_VIEW_MODE && isMe;
           const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
           const lockClass = isLocked ? "locked" : "";
-          const safeStatusClass = ['〇','△','×','-'].includes(s) ? s : '-';
 
           html += `<td class="status-cell status-${safeStatusClass} ${lockClass}" ${clickAttr}>${escapeHtml(s)}</td>`;
         });
         html += "</tr>";
 
         // コメント入力行の生成（本人の行、または既にコメントが存在する場合のみ表示）
-        const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
+//        const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
         if (isMe || hasComment) {
-          html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label"><span class="com-label-top">┗ 💬</span><span class="com-label-bottom">コメント</span></td>`;
-          f.commentStatus.forEach((c, dIdx) => {
-            const isLocked = days[dIdx].isLocked;
-            const lockClass = isLocked ? "locked" : "";
+//          html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label"><span class="com-label-top">┗ 💬</span><span class="com-label-bottom">コメント</span></td>`;
+//          f.commentStatus.forEach((c, dIdx) => {
+//            const isLocked = days[dIdx].isLocked;
+//            const lockClass = isLocked ? "locked" : "";
+        
+            html += `<tr class="com-row ${rowClass}"><td class="name-cell">💬</td>`;
+          
+            days.forEach((d, dIdx) => {
+              const key = d.dateKey;
+              const c = f.commentStatus?.[key] || "";    //dateKeyへ変更
             
             if (isMe && !IS_VIEW_MODE) {
               // 編集モード時の本人セル：クリックでモーダルを開く
-              const icon = c ? '💬' : '＋';
-              html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
+//              const icon = c ? '💬' : '＋';
+//              html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
+                html += `<td onclick="openModal(${fIdx},${dIdx})">${c ? '💬' : '＋'}</td>`;
             } else {
               // 閲覧モード時：コメントがあればアイコン表示（クリックで中身を確認）
-              const safeNameJs = escapeJsString(f.name);
-              const safeLabelJs = escapeJsString(days[dIdx].label);
-              const safeCommentJs = escapeJsString(c);
-              const displayTxt = c  ? `<span class="com-text" onclick="viewModal('${safeNameJs}', '${safeLabelJs}', '${safeCommentJs}')">💬</span>`  : '-';              
-              html += `<td class="${lockClass}"><span class="com-icon">${displayTxt}</span></td>`;
+//              const safeNameJs = escapeJsString(f.name);
+//              const safeLabelJs = escapeJsString(days[dIdx].label);
+//              const safeCommentJs = escapeJsString(c);
+//              const displayTxt = c  ? `<span class="com-text" onclick="viewModal('${safeNameJs}', '${safeLabelJs}', '${safeCommentJs}')">💬</span>`  : '-';              
+//              html += `<td class="${lockClass}"><span class="com-icon">${displayTxt}</span></td>`;
+                html += `<td>${c ? '💬' : '-'}</td>`;
             }
           });
           html += "</tr>";
@@ -865,12 +881,17 @@
         alert("回答期限：前日" + DEADLINE_HOUR + "時を過ぎているため変更できません"); 
         return;
       }
-      
+
+      const key = days[dIdx].dateKey;    // dateKey　追加
       const signs = UI_CONFIG.signs;
-      const current = rawData[fIdx].statuses[dIdx];
+      
+      const current = rawData[fIdx].statuses?.[key] || "-";
+      const next = signs[(signs.indexOf(current) + 1) % signs.length];
       
       // 次の記号を配列から取得して更新
-      rawData[fIdx].statuses[dIdx] = signs[(signs.indexOf(current) + 1) % signs.length];
+      if (!rawData[fIdx].statuses) rawData[fIdx].statuses = {};
+      rawData[fIdx].statuses[key] = next;
+      
       hasChanges = true;
       render(); // 変更を反映するために再描画
     }
@@ -931,8 +952,16 @@
     // ・indexズレが起きると別人データ書き換えリスクあり
     function applyComment() {
       if (currentEditFIdx === -1) return;
+      
+      const key = days[currentEditDIdx].dateKey;                //dateKeyへ変更
       const val = document.getElementById("modalInput").value;
-      rawData[currentEditFIdx].commentStatus[currentEditDIdx] = val;
+
+      if (!rawData[currentEditFIdx].commentStatus) {
+        rawData[currentEditFIdx].commentStatus = {};
+      }
+
+      rawData[currentEditFIdx].commentStatus[key] = val; 
+      
       hasChanges = true;
       closeModal(); 
       render(); // 変更を反映するために再描画
