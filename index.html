@@ -571,11 +571,18 @@
       loader.style.display = "flex";
 
       // ログイン中ユーザー自身のデータのみを抽出して送信ペイロードを作成
-      // const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
-      const myData = rawData.find(f => f.lineIds.includes(MY_LINE_ID));
+      const myData = rawData.find(f => f.lineIds && f.lineIds.includes(MY_LINE_ID));
+
+      // ガード追加（ロジック非変更・安全対策）
+      if (!myData) {
+        alert("ユーザー情報の取得に失敗しました。再度お試しください。");
+        loader.style.display = "none";
+        isSaving = false;
+        return;
+      }
       
-      const payload = days.map((d, i) => ({
-        const key = d.dateKey;
+      const payload = days.map((d) => {
+        const key = d.dateKey;              // dateKeyへ変更
         return{
           weekLabel: WEEK_LABEL,
           dateLabel: d.label, 
@@ -584,14 +591,18 @@
           status: myData.statuses?.[key] || "-",      // ★dateKey追加
           comment: myData.commentStatus?.[key] || ""  // ★dateKey追加
         };
-      }));
+      });
 
       try {
-        const res = await fetchWithTimeout(`${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&idToken=${ID_TOKEN}&payload=${encodeURIComponent(JSON.stringify(payload))}`);  //トークンチェック追加
+        //トークンチェック追加
+        const res = await fetchWithTimeout(
+          `${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&idToken=${ID_TOKEN}&payload=${encodeURIComponent(JSON.stringify(payload))}`
+        );  
         if (!res.ok) throw new Error("HTTP Error");
         
         // 保存完了後、少し待ってからウィンドウを閉じる
         setTimeout(() => { liff.closeWindow(); }, 500);
+        
       } catch (e) {
         alert("保存エラーが発生しました\n\n通信環境を確認して再度お試しください");
         loader.style.display = "none"; 
@@ -792,7 +803,8 @@
         days.forEach((d, i) => {
           const key = d.dateKey;              //dateKey 追加
           const s = f.statuses?.[key] || "-";
-          if (totals[i].hasOwnProperty(s)) totals[i][s]++;
+//          if (totals[i].hasOwnProperty(s)) totals[i][s]++;
+          if (Object.prototype.hasOwnProperty.call(totals[i], s)) totals[i][s]++;
         });
       });
 
@@ -819,11 +831,13 @@
         days.forEach((d, dIdx) => {
           const key = d.dateKey;              //dateKey 追加
           const s = f.statuses?.[key] || "-";
+          
           // 編集権限があればクリックイベント（toggle）を追加
           const isLocked = d.isLocked;
           const canEdit = !IS_VIEW_MODE && isMe;
           const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
           const lockClass = isLocked ? "locked" : "";
+          const safeStatusClass = ['〇','△','×','-'].includes(s) ? s : '-';  //dateKey 追加
 
           html += `<td class="status-cell status-${safeStatusClass} ${lockClass}" ${clickAttr}>${escapeHtml(s)}</td>`;
         });
@@ -831,31 +845,36 @@
 
         // コメント入力行の生成（本人の行、または既にコメントが存在する場合のみ表示）
 //        const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
-        if (isMe || hasComment) {
-//          html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label"><span class="com-label-top">┗ 💬</span><span class="com-label-bottom">コメント</span></td>`;
-//          f.commentStatus.forEach((c, dIdx) => {
-//            const isLocked = days[dIdx].isLocked;
-//            const lockClass = isLocked ? "locked" : "";
+//        const hasComment = f.commentStatus && Object.values(f.commentStatus).some(c => c && c.trim() !== "");  //dateKey 追加
+        const hasComment =
+          f.commentStatus &&
+          typeof f.commentStatus === "object" &&
+          !Array.isArray(f.commentStatus) &&
+          Object.values(f.commentStatus).some(c => c && c.trim() !== "");
         
-            html += `<tr class="com-row ${rowClass}"><td class="name-cell">💬</td>`;
-          
-            days.forEach((d, dIdx) => {
-              const key = d.dateKey;
-              const c = f.commentStatus?.[key] || "";    //dateKeyへ変更
-            
+        if (isMe || hasComment) {
+          html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label"><span class="com-label-top">┗ 💬</span><span class="com-label-bottom">コメント</span></td>`;
+          //dateKeyへ変更
+          days.forEach((d, dIdx) => {
+            const key = d.dateKey;
+            const c = f.commentStatus?.[key] || "";
+
+            const isLocked = d.isLocked;
+            const lockClass = isLocked ? "locked" : "";
+
             if (isMe && !IS_VIEW_MODE) {
               // 編集モード時の本人セル：クリックでモーダルを開く
-//              const icon = c ? '💬' : '＋';
-//              html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
-                html += `<td onclick="openModal(${fIdx},${dIdx})">${c ? '💬' : '＋'}</td>`;
+              const icon = c ? '💬' : '＋';
+              html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
+              
             } else {
               // 閲覧モード時：コメントがあればアイコン表示（クリックで中身を確認）
-//              const safeNameJs = escapeJsString(f.name);
-//              const safeLabelJs = escapeJsString(days[dIdx].label);
-//              const safeCommentJs = escapeJsString(c);
-//              const displayTxt = c  ? `<span class="com-text" onclick="viewModal('${safeNameJs}', '${safeLabelJs}', '${safeCommentJs}')">💬</span>`  : '-';              
-//              html += `<td class="${lockClass}"><span class="com-icon">${displayTxt}</span></td>`;
-                html += `<td>${c ? '💬' : '-'}</td>`;
+              const safeNameJs = escapeJsString(f.name);
+              const safeLabelJs = escapeJsString(d.label);    //dateKeyへ変更
+              const safeCommentJs = escapeJsString(c);
+              
+              const displayTxt = c  ? `<span class="com-text" onclick="viewModal('${safeNameJs}', '${safeLabelJs}', '${safeCommentJs}')">💬</span>`  : '-';              
+              html += `<td class="${lockClass}"><span class="com-icon">${displayTxt}</span></td>`;
             }
           });
           html += "</tr>";
