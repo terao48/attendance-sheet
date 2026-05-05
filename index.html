@@ -351,12 +351,12 @@
     let DEADLINE_HOUR = 23;    // デフォルトの回答期限（前日23時）
     let WEEK_LABEL = "";       // 対象週のラベル（例: 2026/04/13〜）
     let days = [];             // 日付データの配列
-    let rawData = [];          // 取得した全父兄のデータ
+    let rawData = [];          // 取得した全団員のデータ
     let hasChanges = false;    // 編集が行われたかどうかのフラグ
     let isSaving = false;      // 保存処理中かどうかのフラグ
 
     // 現在編集中のモーダルの対象インデックス
-    let currentEditFIdx = -1;  // 行（父兄）のインデックス
+    let currentEditFIdx = -1;  // 行（団員）のインデックス
     let currentEditDIdx = -1;  // 列（日付）のインデックス
 
 
@@ -798,7 +798,7 @@
         return obj;
       });
 
-      // 各父兄のステータスを集計
+      // 各団員のステータスを集計
       rawData.forEach(f => {
         days.forEach((d, i) => {
           const key = d.dateKey;              //dateKey 追加
@@ -821,7 +821,7 @@
       });
       html += "</tr></thead><tbody>";
 
-      // テーブルのボディ（各父兄の行）を構築
+      // テーブルのボディ（各団員の行）を構築
       rawData.forEach((f, fIdx) => {
         const isMe = (!IS_VIEW_MODE && MY_LINE_ID && f.lineIds && f.lineIds.includes(MY_LINE_ID));
         const rowClass = isMe ? 'my-row' : 'other-row';
@@ -889,7 +889,7 @@
 
     /**
      * セルがクリックされた際に、ステータス（〇→△→×→-）を順番に切り替えます。
-     * @param {number} fIdx - クリックされた行（父兄）のインデックス
+     * @param {number} fIdx - クリックされた行（団員）のインデックス
      * @param {number} dIdx - クリックされた列（日付）のインデックス
      */
     // ⚠ 注意: ステータス更新ロジック
@@ -922,7 +922,7 @@
 
     /**
      * コメント編集用のモーダルウィンドウを開きます。
-     * @param {number} fIdx - 編集対象の父兄のインデックス
+     * @param {number} fIdx - 編集対象の団員のインデックス
      * @param {number} dIdx - 編集対象の日付のインデックス
      */
     // ⚠ 注意: コメント編集処理
@@ -935,11 +935,16 @@
       }
       currentEditFIdx = fIdx; 
       currentEditDIdx = dIdx;
+
+      const key = days[dIdx].dateKey;  // dateKeyへ変更
       
       document.getElementById("modalTitle").innerText = days[dIdx].label + " のコメント";
       document.getElementById("modalDesc").innerText = "コメントを入力 (例: 17:30から参加)";
       document.getElementById("modalDesc").style.display = "block";
-      document.getElementById("modalInput").value = rawData[fIdx].commentStatus[dIdx] || "";
+      
+      if (!rawData[fIdx].commentStatus) {  rawData[fIdx].commentStatus = {};}
+      document.getElementById("modalInput").value = rawData[fIdx].commentStatus?.[key] || "";  // dateKeyへ変更
+      
       document.getElementById("modalInput").readOnly = false;
       document.getElementById("modalApplyBtn").style.display = "block";
       document.getElementById("commentModal").style.display = "flex";
@@ -950,7 +955,7 @@
 
     /**
      * コメント閲覧専用のモーダルウィンドウを開きます（編集不可）。
-     * @param {string} name - 父兄の名前
+     * @param {string} name - 団員の名前
      * @param {string} dateLabel - 日付のラベル
      * @param {string} text - 表示するコメント内容
      */
