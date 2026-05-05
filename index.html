@@ -809,7 +809,7 @@
       });
 
       // テーブルのヘッダー（日付と集計）を構築
-      let html = `<thead><tr><th class="name-col-head">団員<br>父兄</th>`;
+      let html = `<thead><tr><th class="name-col-head">団員<br>名簿</th>`;
       days.forEach((d, i) => {
         let cls = (d.label.includes("日") || d.label.includes("祝")) ? "sun" : d.label.includes("土") ? "sat" : "";
         html += `<th class="${cls}">${escapeHtml(d.label)}<div class="count-box">`;
