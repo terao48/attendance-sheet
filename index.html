@@ -581,6 +581,7 @@
         return;
       }
       
+      // GASへ送信するpayload生成
       const payload = days.map((d) => {
         const key = d.dateKey;              // dateKeyへ変更
         return{
@@ -588,29 +589,61 @@
           dateLabel: d.label, 
           dateKey: d.dateKey,   // ★dateKey追加
           familyId: myData.id,
-          status: myData.statuses?.[key] || "-",      // ★dateKey追加
+          status:                             // ★dateKey追加
+            (key in (myData.statuses || {}))
+            ? myData.statuses[key]              
+            : "-",
           comment: myData.commentStatus?.[key] || ""  // ★dateKey追加
         };
       });
 
       try {
-        //トークンチェック追加
+        // =========================
+        // POST(JSON)通信
+        // =========================
         const res = await fetchWithTimeout(
-          `${SETTINGS.GAS_URL}?action=update_all&uid=${MY_LINE_ID}&idToken=${ID_TOKEN}&payload=${encodeURIComponent(JSON.stringify(payload))}`
-        );  
-        if (!res.ok) throw new Error("HTTP Error");
-        
+          SETTINGS.GAS_URL,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+              action: "update_all",
+              uid: MY_LINE_ID,
+              idToken: ID_TOKEN,
+              payload: payload
+            })
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error("HTTP Error");
+        }
+
+        const result = await res.json();
+
+        if (result.status !== "success") {
+          throw new Error(result.message || "保存失敗");
+        }
         // 保存完了後、少し待ってからウィンドウを閉じる
-        setTimeout(() => { liff.closeWindow(); }, 500);
-        
+        setTimeout(() => {liff.closeWindow();}, 500);
+
       } catch (e) {
-        alert("保存エラーが発生しました\n\n通信環境を確認して再度お試しください");
-        loader.style.display = "none"; 
+
+        console.error(e);
+        alert(
+          "保存エラーが発生しました\n\n" +
+          "通信環境を確認して再度お試しください"
+        );
+        loader.style.display = "none";
         isSaving = false;
       }
     }
 
-
+    
     /* ===================================================
        2. 過去データ閲覧モード用関数
     =================================================== */
