@@ -588,7 +588,7 @@
           dateLabel: d.label, 
           dateKey: d.dateKey,   // ★dateKey追加
           familyId: myData.id,
-          status: (key in (myData.statuses || {})) ? myData.statuses[key] : "-"     // ★dateKey追加、厳密化
+          status: myData.statuses?.[key] || "-",      // ★dateKey追加
           comment: myData.commentStatus?.[key] || ""  // ★dateKey追加
         };
       });
@@ -846,12 +846,11 @@
         // コメント入力行の生成（本人の行、または既にコメントが存在する場合のみ表示）
 //        const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
 //        const hasComment = f.commentStatus && Object.values(f.commentStatus).some(c => c && c.trim() !== "");  //dateKey 追加
-        //dateKey 追加
         const hasComment =
           f.commentStatus &&
           typeof f.commentStatus === "object" &&
           !Array.isArray(f.commentStatus) &&
-          Object.values(f.commentStatus || {}).some(c => c && c.trim() !== "");
+          Object.values(f.commentStatus).some(c => c && c.trim() !== "");
         
         if (isMe || hasComment) {
           html += `<tr class="com-row ${rowClass}"><td class="name-cell com-label"><span class="com-label-top">┗ 💬</span><span class="com-label-bottom">コメント</span></td>`;
@@ -885,8 +884,7 @@
       document.getElementById("mainTable").innerHTML = html + "</tbody>";
       
       // 描画後、少し待ってからスクロールインジケーターの表示判定を実行
-      //setTimeout(checkScroll, 300);
-      requestAnimationFrame(checkScroll);
+      setTimeout(checkScroll, 300);
     }
 
     /**
@@ -907,11 +905,10 @@
       const signs = UI_CONFIG.signs;
       
       const current = rawData[fIdx].statuses?.[key] || "-";
-      if (!rawData[fIdx].statuses) rawData[fIdx].statuses = {};
-      
       const next = signs[(signs.indexOf(current) + 1) % signs.length];
       
       // 次の記号を配列から取得して更新
+      if (!rawData[fIdx].statuses) rawData[fIdx].statuses = {};
       rawData[fIdx].statuses[key] = next;
       
       hasChanges = true;
@@ -1110,7 +1107,6 @@
 
     // アプリの起動エントリポイント
     window.onload = init;
-    //window.addEventListener('load', init);
   </script>
 </body>
 </html>
