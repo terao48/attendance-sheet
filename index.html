@@ -1109,7 +1109,8 @@
     }, { passive: false });
 
     // アプリの起動エントリポイント
-    window.addEventListener('load', init);
+    window.onload = init;
+    //window.addEventListener('load', init);
   </script>
 </body>
 </html>
