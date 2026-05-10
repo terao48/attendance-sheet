@@ -677,6 +677,50 @@
       }
     }
 
+
+    // ヘッダー人数更新関数追加
+    function updateHeaderCounts() {
+      const totals = days.map(() => {
+        let obj = {};
+        UI_CONFIG.signs.forEach(s => obj[s] = 0);
+        return obj;
+      });
+
+      rawData.forEach(f => {
+        days.forEach((d, i) => {
+
+          const key = d.dateKey;
+          const s = f.statuses?.[key] || "-";
+
+          if (Object.prototype.hasOwnProperty.call(totals[i], s)) {
+            totals[i][s]++;
+          }
+        });
+
+      });
+
+      const headers = document.querySelectorAll("thead th");
+      days.forEach((d, i) => {
+        const th = headers[i + 1];
+    
+        if (!th) return;
+        const countBox = th.querySelector(".count-box");
+        if (!countBox) return;    let html = "";
+
+      UI_CONFIG.signs.forEach(s => {
+        html += `
+          <div class="count-row">
+            <span>${s}${UI_CONFIG.labels[s]}</span>
+            <span>${totals[i][s]}</span>
+          </div>
+        `;
+      });
+
+    countBox.innerHTML = html;
+
+  });
+}
+
     
     /* ===================================================
        2. 過去データ閲覧モード用関数
@@ -871,6 +915,9 @@
       // スクロール位置保持
       // =========================
       const area = document.getElementById("content-area");
+      if (area) {
+        requestAnimationFrame(checkScroll);
+      }
       const savedScrollTop = area ? area.scrollTop : 0;
       const savedScrollLeft = area ? area.scrollLeft : 0;
       
@@ -930,7 +977,16 @@
           const lockClass = isLocked ? "locked" : "";
           const safeStatusClass = UI_CONFIG.signs.includes(s) ? s : '-';  // status class安全化
           
-          html += `<td class="status-cell status-${safeStatusClass} ${lockClass}" ${clickAttr}>${escapeHtml(s)}</td>`;
+//          html += `<td class="status-cell status-${safeStatusClass} ${lockClass}" ${clickAttr}>${escapeHtml(s)}</td>`;
+          html += `
+            <td
+              class="status-cell status-${safeStatusClass} ${lockClass}"
+              data-fidx="${fIdx}"
+              data-didx="${dIdx}"
+              ${clickAttr}
+            >
+              ${escapeHtml(s)}
+            </td>`;
         });
         html += "</tr>";
 
@@ -954,8 +1010,18 @@
             if (isMe && !IS_VIEW_MODE) {
               // 編集モード時の本人セル：クリックでモーダルを開く
               const icon = c ? '💬' : '＋';
-              html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
-              
+//              html += `<td class="${lockClass}"><span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">${icon}</span></td>`;
+              html += `
+                <td
+                  class="${lockClass}"
+                  data-comment-fidx="${fIdx}"
+                  data-comment-didx="${dIdx}"
+                >
+                  <span class="com-icon" onclick="openModal(${fIdx}, ${dIdx})">
+                    ${icon}
+                  </span>
+                </td>
+              `;              
             } else {
               // 閲覧モード時：コメントがあればアイコン表示（クリックで中身を確認）
               const safeNameJs = escapeJsString(f.name);
@@ -1014,7 +1080,29 @@
       rawData[fIdx].statuses[key] = next;
       
       hasChanges = true;
-      render(); // 変更を反映するために再描画
+//      render(); // 変更を反映するために再描画
+
+      // =========================
+      // セルのみ更新
+      // =========================
+      const cell = document.querySelector(
+        `[data-fidx="${fIdx}"][data-didx="${dIdx}"]`
+      );
+
+      if (cell) {
+        // class整理
+        UI_CONFIG.signs.forEach(sign => {
+          cell.classList.remove(`status-${sign}`);
+        });
+
+        cell.classList.add(`status-${next}`);
+        cell.textContent = next;
+      }  
+
+      // =========================
+      // ヘッダー人数再集計
+      // =========================
+      updateHeaderCounts();
     }
 
 
@@ -1089,8 +1177,23 @@
       rawData[currentEditFIdx].commentStatus[key] = val; 
       
       hasChanges = true;
-      closeModal(); 
-      render(); // 変更を反映するために再描画
+
+      // コメントアイコンだけ更新
+      const td = document.querySelector(
+        `[data-comment-fidx="${currentEditFIdx}"][data-comment-didx="${currentEditDIdx}"]`
+      );
+
+      if (td) {
+        const icon = val ? "💬" : "＋";
+
+        td.innerHTML = `
+        <span class="com-icon"
+          onclick="openModal(${currentEditFIdx}, ${currentEditDIdx})">
+          ${icon}
+          </span>
+        `;
+      }
+      closeModal();
     }
 
     /**
