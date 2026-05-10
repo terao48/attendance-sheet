@@ -16,7 +16,7 @@
        ・モーダル/スクロール制御
        =================================================== */
     
-    /* HTML コードv9.3 リリース前準備版 */
+    /* HTML コードv9.4 リリース前準備版 */
     /* ===================================================
        1. 全体設定・ルート変数
     =================================================== */
@@ -874,7 +874,13 @@
       const savedScrollTop = area ? area.scrollTop : 0;
       const savedScrollLeft = area ? area.scrollLeft : 0;
       
-      if (!days || days.length === 0) return;
+      if (!days || days.length === 0) {
+        if (area) {
+          area.scrollTop = savedScrollTop;
+          area.scrollLeft = savedScrollLeft;
+        }
+        return;
+      }
 
       // 日付ごとの集計配列を初期化
       const totals = days.map(() => {
@@ -970,12 +976,16 @@
       // スクロール位置復元
       // =========================
       if (area) {
-        area.scrollTop = savedScrollTop;
+        const maxScrollTop = area.scrollHeight - area.clientHeight;
+        area.scrollTop = Math.min(savedScrollTop, maxScrollTop);
         area.scrollLeft = savedScrollLeft;
       }
       
       // 描画後、少し待ってからスクロールインジケーターの表示判定を実行
-      setTimeout(checkScroll, 300);
+//      setTimeout(checkScroll, 300);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(checkScroll);
+      });
     }
 
     /**
