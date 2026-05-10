@@ -406,10 +406,10 @@
         }
         
         const profile = liff.getDecodedIDToken();
-        MY_LINE_ID = profile.sub;
         if (!profile || !profile.sub) {
           throw new Error("LINE認証情報取得失敗");
         }
+        MY_LINE_ID = profile.sub;
         // 追加
         ID_TOKEN = liff.getIDToken();
         
@@ -571,7 +571,7 @@
         if (data.status !== "success") {
           throw new Error(data.message || "登録失敗");
         }
-        window.location.reload(); // 登録成功後、画面をリロードしてメイン画面へ
+        window.location.replace(window.location.pathname); // 登録成功後、画面をリロードしてメイン画面へ
       
       } catch (e) {
         alert("登録エラーが発生しました\n\n" + e.message);
@@ -821,7 +821,7 @@
       
       try {
         // 検索開始時にボタンの強調を解除
-        document.querySelector(".btn-show-past").classList.remove("btn-highlight");
+        btn.classList.remove("btn-highlight");
 
         const y = document.getElementById("sel-year").value;
         const m = String(document.getElementById("sel-month").value).padStart(2, '0');
@@ -858,11 +858,22 @@
     /**
      * 取得したデータ（rawData）を元に、HTMLのテーブル構造を生成し画面に描画します。
      * 日付ごとの各ステータス（〇、△、×）の合計人数も計算してヘッダーに表示します。
+     * テーブル描画処理
+     * ・再描画時にスクロール位置を保持
+     * ・toggle / コメント更新後でも位置が飛ばないようにする
      */
     // ⚠ 最重要: UI描画の中核
     // ・getInitialDataのレスポンス構造に完全依存
     // ・dates / families構造変更は即表示崩壊
+    
     function render() {
+      // =========================
+      // スクロール位置保持
+      // =========================
+      const area = document.getElementById("content-area");
+      const savedScrollTop = area ? area.scrollTop : 0;
+      const savedScrollLeft = area ? area.scrollLeft : 0;
+      
       if (!days || days.length === 0) return;
 
       // 日付ごとの集計配列を初期化
@@ -877,7 +888,7 @@
         days.forEach((d, i) => {
           const key = d.dateKey;              //dateKey 追加
           const s = f.statuses?.[key] || "-";
-//          if (totals[i].hasOwnProperty(s)) totals[i][s]++;
+
           if (Object.prototype.hasOwnProperty.call(totals[i], s)) totals[i][s]++;
         });
       });
@@ -911,15 +922,13 @@
           const canEdit = !IS_VIEW_MODE && isMe;
           const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
           const lockClass = isLocked ? "locked" : "";
-          const safeStatusClass = ['〇','△','×','-'].includes(s) ? s : '-';  //dateKey 追加
+          const safeStatusClass = UI_CONFIG.signs.includes(s) ? s : '-';  // status class安全化
           
           html += `<td class="status-cell status-${safeStatusClass} ${lockClass}" ${clickAttr}>${escapeHtml(s)}</td>`;
         });
         html += "</tr>";
 
         // コメント入力行の生成（本人の行、または既にコメントが存在する場合のみ表示）
-//        const hasComment = f.commentStatus && f.commentStatus.some(c => c && c.trim() !== "");
-//        const hasComment = f.commentStatus && Object.values(f.commentStatus).some(c => c && c.trim() !== "");  //dateKey 追加
         const hasComment =
           f.commentStatus &&
           typeof f.commentStatus === "object" &&
@@ -954,8 +963,16 @@
           html += "</tr>";
         }
       });
-
+      // DOM反映
       document.getElementById("mainTable").innerHTML = html + "</tbody>";
+      
+      // =========================
+      // スクロール位置復元
+      // =========================
+      if (area) {
+        area.scrollTop = savedScrollTop;
+        area.scrollLeft = savedScrollLeft;
+      }
       
       // 描画後、少し待ってからスクロールインジケーターの表示判定を実行
       setTimeout(checkScroll, 300);
@@ -982,7 +999,7 @@
       const currentIndex = signs.indexOf(current);
       const next = signs[(currentIndex >= 0 ? currentIndex + 1 : 0) % signs.length];
       
-      // 次の記号を配列から取得して更新
+      // 次の記号を配列順に循環取得して更新
       if (!rawData[fIdx].statuses) rawData[fIdx].statuses = {};
       rawData[fIdx].statuses[key] = next;
       
