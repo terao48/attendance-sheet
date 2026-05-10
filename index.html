@@ -112,10 +112,10 @@
 
     /* 日付変更後にボタンを強調（ハイライト）するためのクラス */
     .btn-highlight {
-      background: #2ecc71 !important;  /* 少し明るい緑に */
-      transform: translateY(-3px);     /* 上に少し浮かす */
-      box-shadow: 0 24px 36px rgba(0,0,0,0.2);  /* 影を強くして浮遊感を出す */
-      animation: pulse-green 1.5s infinite;     /* 軽く点滅させて注意を引く */
+      background: #2ecc71 !important; /* 少し明るい緑に */
+      transform: translateY(-3px);   /* 上に少し浮かす */
+      box-shadow: 0 24px 36px rgba(0,0,0,0.2); /* 影を強くして浮遊感を出す */
+      animation: pulse-green 1.5s infinite;  /* 軽く点滅させて注意を引く */
     }
     @keyframes pulse-green {
       0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
@@ -346,7 +346,6 @@
       labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
     };
 
-    let ID_TOKEN = "";
     let MY_LINE_ID = "";       // LINEユーザーID
     let IS_VIEW_MODE = false;  // 閲覧モードかどうかのフラグ
     let DEADLINE_HOUR = 23;    // デフォルトの回答期限（前日23時）
@@ -383,13 +382,13 @@
      * アプリ起動時の初期化処理を行います。
      * 1. URLパラメータから閲覧モードかどうかを判定します。
      * 2. LIFFアプリを初期化し、未ログインならログイン画面へ誘導します。
-     * 3. ログイン済みならLINE IDを取得し、データ読み込み（）を開始します。
+     * 3. ログイン済みならLINE IDを取得し、データ読み込み（fetchData）を開始します。
      */
     // ⚠ 重要: GASとの通信起点
     // ・GAS doGetのaction仕様と完全一致が必要
     // ・URLパラメータ変更は通信エラーの原因
     async function init() {
-      document.title = APP_TITLE;
+      document.title = APP_TITLE
       
       const params = new URLSearchParams(window.location.search);
       IS_VIEW_MODE = (params.get('mode') === 'view');
@@ -407,14 +406,10 @@
         
         const profile = liff.getDecodedIDToken();
         MY_LINE_ID = profile.sub;
-        if (!profile || !profile.sub) {
-          throw new Error("LINE認証情報取得失敗");
-        }
         // 追加
-        ID_TOKEN = liff.getIDToken();
+        window.ID_TOKEN = liff.getIDToken();
         
         await fetchData(); 
-        
       } catch (e) {
         document.getElementById("loading").style.display = "none";
         console.error(e);
@@ -454,8 +449,6 @@
     // ・GAS doGetのaction仕様と完全一致が必要
     // ・URLパラメータ変更は通信エラーの原因
     async function fetchData(retryCount = 0, targetDateStr = null) {
-      document.getElementById("loadingText").innerText = "読込中...";    
-
       const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
       let url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
       
@@ -550,31 +543,10 @@
       const sid = document.getElementById("name-list").value;
       document.getElementById("loading").style.display = "flex";
       try {
-//        await fetchWithTimeout(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&idToken=${ID_TOKEN}&action=link&family_id=${sid}`);  //トークンチェック追加
-        const res = await fetchWithTimeout(
-          SETTINGS.GAS_URL,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              action: "link",
-              uid: MY_LINE_ID,
-              idToken: ID_TOKEN,
-              family_id: sid
-            })
-          }
-        );
-        const data = await res.json();
-
-        if (data.status !== "success") {
-          throw new Error(data.message || "登録失敗");
-        }
+        await fetchWithTimeout(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&idToken=${ID_TOKEN}&action=link&family_id=${sid}`);  //トークンチェック追加
         window.location.reload(); // 登録成功後、画面をリロードしてメイン画面へ
-      
       } catch (e) {
-        alert("登録エラーが発生しました\n\n" + e.message);
+        alert("登録エラーが発生しました");
         document.getElementById("loading").style.display = "none";
       }
     }
@@ -612,17 +584,16 @@
       // GASへ送信するpayload生成
       const payload = days.map((d) => {
         const key = d.dateKey;              // dateKeyへ変更
-        
         return{
           weekLabel: WEEK_LABEL,
-          //dateLabel: d.label, 
+          dateLabel: d.label, 
           dateKey: d.dateKey,   // ★dateKey追加
           familyId: myData.id,
-          // ★dateKey追加
-          status: Object.prototype.hasOwnProperty.call(myData.statuses || {}, key)
-            ? myData.statuses[key]
+          status:                             // ★dateKey追加
+            (key in (myData.statuses || {}))
+            ? myData.statuses[key]              
             : "-",
-          comment: myData.commentStatus?.[key] || ""  
+          comment: myData.commentStatus?.[key] || ""  // ★dateKey追加
         };
       });
 
@@ -649,15 +620,10 @@
         );
 
         if (!res.ok) {
-          throw new Error(`HTTP Error: ${res.status}`);
+          throw new Error("HTTP Error");
         }
 
-        let result;
-        try {
-           result = await res.json();
-         } catch(err) {
-           throw new Error("JSON解析失敗");
-         }
+        const result = await res.json();
 
         if (result.status !== "success") {
           throw new Error(result.message || "保存失敗");
@@ -765,8 +731,8 @@
       const selMonday = document.getElementById("sel-monday");
       if (!selYear || !selMonth || !selMonday) return;
 
-      const y = parseInt(selYear.value, 10);
-      const m = parseInt(selMonth.value, 10);
+      const y = parseInt(selYear.value);
+      const m = parseInt(selMonth.value);
       if (isNaN(y) || isNaN(m)) return;
   
       selMonday.innerHTML = "";
@@ -816,9 +782,6 @@
      * ドロップダウンで指定した日付のデータをサーバーから取得します。
      */
     function fetchPastData() {
-      const btn = document.querySelector(".btn-show-past");
-      btn.disabled = true;      
-
       // 検索開始時にボタンの強調を解除
       document.querySelector(".btn-show-past").classList.remove("btn-highlight");
 
@@ -830,12 +793,8 @@
       document.getElementById("main-view").style.display = "none";
       document.getElementById("loading").style.display = "flex";
       document.getElementById("loadingText").innerText = "データ取得中...";
-
+      
       fetchData(0, targetDateStr);
-      finally {
-        const btn = document.querySelector(".btn-show-past");
-        if (btn) btn.disabled = false;
-      }
     }
 
 
@@ -912,7 +871,7 @@
           const clickAttr = canEdit ? `onclick="toggle(${fIdx},${dIdx})"` : "";
           const lockClass = isLocked ? "locked" : "";
           const safeStatusClass = ['〇','△','×','-'].includes(s) ? s : '-';  //dateKey 追加
-          
+
           html += `<td class="status-cell status-${safeStatusClass} ${lockClass}" ${clickAttr}>${escapeHtml(s)}</td>`;
         });
         html += "</tr>";
@@ -979,8 +938,7 @@
       const signs = UI_CONFIG.signs;
       
       const current = rawData[fIdx].statuses?.[key] || "-";
-      const currentIndex = signs.indexOf(current);
-      const next = signs[(currentIndex >= 0 ? currentIndex + 1 : 0) % signs.length];
+      const next = signs[(signs.indexOf(current) + 1) % signs.length];
       
       // 次の記号を配列から取得して更新
       if (!rawData[fIdx].statuses) rawData[fIdx].statuses = {};
@@ -1115,7 +1073,6 @@
      */
     function slowScrollToBottom(element, duration) {
       const table = element.querySelector('table');
-      if (!table) return;
       const start = element.scrollTop;
       
       // 【重要】scrollHeightではなく、tableのoffsetHeight（純粋な表の高さ）を使います。
@@ -1182,8 +1139,9 @@
     }, { passive: false });
 
     // アプリの起動エントリポイント
-    //window.onload = init;
-    window.addEventListener('DOMContentLoaded', init);
+    window.onload = init;
   </script>
 </body>
 </html>
+
+
