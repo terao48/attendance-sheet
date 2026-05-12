@@ -351,6 +351,7 @@
     let IS_VIEW_MODE = false;  // 閲覧モードかどうかのフラグ
     let DEADLINE_HOUR = 23;    // デフォルトの回答期限（前日23時）
     let WEEK_LABEL = "";       // 対象週のラベル（例: 2026/04/13〜）
+    let BASE_DATE_STR = "";
     let days = [];             // 日付データの配列
     let rawData = [];          // 取得した全団員のデータ
     let hasChanges = false;    // 編集が行われたかどうかのフラグ
@@ -488,6 +489,7 @@
 
           // 変数にデータを格納
           WEEK_LABEL = data.data.weekLabel;
+          BASE_DATE_STR = data.data.baseDateStr;    // ★追加
           days = data.data.dates;
           rawData = data.data.families;
           if (data.data.deadlineHour !== undefined) DEADLINE_HOUR = data.data.deadlineHour;
