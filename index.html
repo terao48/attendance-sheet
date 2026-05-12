@@ -458,6 +458,7 @@
 
       const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
       let url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
+      console.log(SETTINGS.GAS_URL);
       
       if (targetDateStr) {
         url += `&targetDate=${targetDateStr}`;
