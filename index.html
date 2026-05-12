@@ -615,9 +615,12 @@
         
         return{
           weekLabel: WEEK_LABEL,
+          weekId: BASE_DATE_STR,  // ★追加
+          
           //dateLabel: d.label, 
           dateKey: d.dateKey,   // ★dateKey追加
           familyId: myData.id,
+          
           // ★dateKey追加
           status: Object.prototype.hasOwnProperty.call(myData.statuses || {}, key)
             ? myData.statuses[key]
