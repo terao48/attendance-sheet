@@ -554,26 +554,37 @@
       document.getElementById("loading").style.display = "flex";
       try {
 //        await fetchWithTimeout(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&idToken=${ID_TOKEN}&action=link&family_id=${sid}`);  //トークンチェック追加
+
+//        const res = await fetchWithTimeout(
+//          SETTINGS.GAS_URL,
+//          {
+//            method: "POST",
+//            headers: { "Content-Type": "application/json" },
+//            body: JSON.stringify({ action: "link", uid: MY_LINE_ID, idToken: ID_TOKEN, family_id: sid })
+//          }
+//        );
+        
+        const formData = new URLSearchParams();
+      
+        formData.append("action", "update_all");
+        formData.append("uid", MY_LINE_ID);
+        formData.append("idToken", ID_TOKEN);
+        formData.append("payload", JSON.stringify(payload));
+      
         const res = await fetchWithTimeout(
           SETTINGS.GAS_URL,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              action: "link",
-              uid: MY_LINE_ID,
-              idToken: ID_TOKEN,
-              family_id: sid
-            })
+            body: formData
           }
         );
+        
         const data = await res.json();
 
         if (data.status !== "success") {
           throw new Error(data.message || "登録失敗");
         }
+        
         window.location.replace(window.location.pathname); // 登録成功後、画面をリロードしてメイン画面へ
       
       } catch (e) {
@@ -633,43 +644,54 @@
       });
 
       try {
-        // =========================
-        // POST(JSON)通信
-        // =========================
-        const res = await fetchWithTimeout(
-          SETTINGS.GAS_URL,
-          {
-            method: "POST",
+// =========================
+// POST(form-urlencoded)通信
+// =========================
+const formData = new URLSearchParams();
 
-            headers: {
-              "Content-Type": "application/json"
-            },
+formData.append("action", "update_all");
+formData.append("uid", MY_LINE_ID);
+formData.append("idToken", ID_TOKEN);
+formData.append("payload", JSON.stringify(payload));
 
-            body: JSON.stringify({
-              action: "update_all",
-              uid: MY_LINE_ID,
-              idToken: ID_TOKEN,
-              payload: payload
-            })
-          }
-        );
+console.log("POST START");
+console.log(SETTINGS.GAS_URL);
+console.log(payload);
 
-        if (!res.ok) {
-          throw new Error(`HTTP Error: ${res.status}`);
-        }
+const res = await fetchWithTimeout(
+  SETTINGS.GAS_URL,
+  {
+    method: "POST",
+    body: formData
+  }
+);
 
-        let result;
-        try {
-           result = await res.json();
-         } catch(err) {
-           throw new Error("JSON解析失敗");
-         }
+console.log("POST STATUS", res.status);
 
-        if (result.status !== "success") {
-          throw new Error(result.message || "保存失敗");
-        }
+if (!res.ok) {
+  throw new Error(`HTTP Error: ${res.status}`);
+}
+
+let result;
+
+try {
+  result = await res.json();
+  console.log("POST RESULT", result);
+
+} catch(err) {
+
+  const txt = await res.text();
+  console.log("RAW RESPONSE", txt);
+
+  throw new Error("JSON解析失敗");
+}
+
+if (result.status !== "success") {
+  throw new Error(result.message || "保存失敗");
+}
+        
         // 保存完了後、少し待ってからウィンドウを閉じる
-        // setTimeout(() => {liff.closeWindow();}, 500);
+        setTimeout(() => {liff.closeWindow();}, 500);
 
       } catch (e) {
 
