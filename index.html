@@ -655,40 +655,17 @@
         formData.append("payload", JSON.stringify(payload));
 
         console.log("POST START");
-        console.log(SETTINGS.GAS_URL);
-        console.log(payload);
 
-        const res = await fetchWithTimeout(
-        SETTINGS.GAS_URL,
-        {
-          method: "POST",
-          mode: "no-cors",
-          body: formData
-        }
-      );
-      console.log("POST STATUS", res.status);
+        await fetchWithTimeout(
+          SETTINGS.GAS_URL,
+          {
+            method: "POST",
+            mode: "no-cors",
+            body: formData
+          }
+        );
+        console.log("POST SENT");
 
-      if (!res.ok) {
-        throw new Error(`HTTP Error: ${res.status}`);
-      }
-      let result;
-
-      try {
-        result = await res.json();
-        console.log("POST RESULT", result);
-
-      } catch(err) {
-
-        const txt = await res.text();
-        console.log("RAW RESPONSE", txt);
-
-        throw new Error("JSON解析失敗");
-      }
-
-      if (result.status !== "success") {
-        throw new Error(result.message || "保存失敗");
-      }
-        
         // 保存完了後、少し待ってからウィンドウを閉じる
         setTimeout(() => {liff.closeWindow();}, 500);
 
@@ -699,9 +676,9 @@
           "保存エラーが発生しました\n\n" +
           "通信環境を確認して再度お試しください"
         );
-        loader.style.display = "none";
-        isSaving = false;
-      }
+
+      loader.style.display = "none";
+      isSaving = false;
     }
 
 
