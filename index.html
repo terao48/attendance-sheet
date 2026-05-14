@@ -418,7 +418,7 @@
         
       } catch (err) {
         document.getElementById("loading").style.display = "none";
-        .error(err);
+        console.error(err);
         alert("初期化または通信エラーが発生しました\n\n詳細: " + err.message);
       }
     }
