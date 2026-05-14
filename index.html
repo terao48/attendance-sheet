@@ -458,7 +458,6 @@
 
       const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
       let url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
-      console.log(SETTINGS.GAS_URL);
       
       if (targetDateStr) {
         url += `&targetDate=${targetDateStr}`;
@@ -552,17 +551,6 @@
       const sid = document.getElementById("name-list").value;
       document.getElementById("loading").style.display = "flex";
       try {
-//        await fetchWithTimeout(`${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&idToken=${ID_TOKEN}&action=link&family_id=${sid}`);  //トークンチェック追加
-
-//        const res = await fetchWithTimeout(
-//          SETTINGS.GAS_URL,
-//          {
-//            method: "POST",
-//            headers: { "Content-Type": "application/json" },
-//            body: JSON.stringify({ action: "link", uid: MY_LINE_ID, idToken: ID_TOKEN, family_id: sid })
-//          }
-//        );
-        
         const formData = new URLSearchParams();
       
         formData.append("action", "link");
@@ -1308,14 +1296,13 @@
      */
     document.addEventListener('touchmove', function(e) {
       if (e.touches.length > 1) return; // ピンチズーム等は許可
-      if (!e.target.closest('.table-wrapper') && !e.target.closest('.modal')) { 
+      if (!e.target.closest('.table-wrapper') && !e.target.closest('.modal-box')) { 
         e.preventDefault(); 
       }
     }, { passive: false });
 
     // アプリの起動エントリポイント
-    window.onload = init;
-    //window.addEventListener('DOMContentLoaded', init); ←NG　返って来なくなる
+    window.addEventListener('load', init);
   </script>
 </body>
 </html>
