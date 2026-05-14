@@ -651,7 +651,15 @@
         );
         
         // 保存完了後、少し待ってからウィンドウを閉じる
-        setTimeout(() => {liff.closeWindow();}, 500);
+//        setTimeout(() => {liff.closeWindow();}, 500);
+        const res = await fetchWithTimeout(...);
+        if (!res.ok) {
+          throw new Error(`HTTP Error: ${res.status}`);
+        }
+        const data = await res.json();
+        if (data.status !== "success") {
+          throw new Error(data.message || "保存失敗");
+        }
 
       } catch (e) {
 
