@@ -416,7 +416,7 @@
         
         await fetchData(); 
         
-      } catch (e) {
+      } catch (err) {
         document.getElementById("loading").style.display = "none";
         .error(err);
         alert("初期化または通信エラーが発生しました\n\n詳細: " + err.message);
@@ -438,9 +438,9 @@
         const response = await fetch(url, { ...options, signal: controller.signal });
         clearTimeout(id);
         return response;
-      } catch (e) {
+      } catch (err) {
         clearTimeout(id);
-        if (e.name === 'AbortError') throw new Error("通信タイムアウト");
+        if (err.name === 'AbortError') throw new Error("通信タイムアウト");
         throw e;
       }
     }
@@ -459,9 +459,7 @@
 
       const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
       let url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
-      
-//      console.log(SETTINGS.GAS_URL);
-      
+     
       if (targetDateStr) {
         url += `&targetDate=${targetDateStr}`;
       }
@@ -659,7 +657,7 @@
           SETTINGS.GAS_URL,
           {
             method: "POST",
-            mode: "no-cors",  // no-cors:GAS側レスポンスは取得できないが、LIFF + GAS 環境で送信成功率を優先
+//            mode: "no-cors",  // no-cors:GAS側レスポンスは取得できないが、LIFF + GAS 環境で送信成功率を優先
             body: formData
           }
         );
