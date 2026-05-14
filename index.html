@@ -624,7 +624,7 @@
       
       // GASへ送信するpayload生成
       const payload = days.map((d) => {
-        const key = d.dateKey;              // dateKeyへ変更
+        const key = d.dateKey;         // dateKeyへ変更
         
         return{
           weekLabel: WEEK_LABEL,
@@ -657,7 +657,7 @@
           SETTINGS.GAS_URL,
           {
             method: "POST",
-            mode: "no-cors",    // GAS側レスポンスは取得できないが、LIFF + GAS 環境で送信成功率を優先
+//            mode: "no-cors",    // GAS側レスポンスは取得できないが、LIFF + GAS 環境で送信成功率を優先
             body: formData
           }
         );
@@ -1297,6 +1297,7 @@
     // インジケーター（▼ボタン）が押された時の挙動を登録します
     document.getElementById("scrollIndicator").onclick = function() {
       const area = document.getElementById("content-area");
+      
       // 1000ミリ秒（1秒）かけて下までスクロールします（数字を減らすと速くなります）
       slowScrollToBottom(area, 1000); 
     };
@@ -1314,7 +1315,7 @@
 
     // アプリの起動エントリポイント
     window.onload = init;
-    //window.addEventListener('DOMContentLoaded', init);
+    //window.addEventListener('DOMContentLoaded', init); ←NG　返って来なくなる
   </script>
 </body>
 </html>
