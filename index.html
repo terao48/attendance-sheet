@@ -416,10 +416,10 @@
         
         await fetchData(); 
         
-      } catch (err) {
+      } catch (e) {
         document.getElementById("loading").style.display = "none";
-        console.error(err);
-        alert("初期化または通信エラーが発生しました\n\n詳細: " + err.message);
+        console.error(e);
+        alert("初期化または通信エラーが発生しました\n\n詳細: " + e.message);
       }
     }
 
@@ -438,9 +438,9 @@
         const response = await fetch(url, { ...options, signal: controller.signal });
         clearTimeout(id);
         return response;
-      } catch (err) {
+      } catch (e) {
         clearTimeout(id);
-        if (err.name === 'AbortError') throw new Error("通信タイムアウト");
+        if (e.name === 'AbortError') throw new Error("通信タイムアウト");
         throw e;
       }
     }
@@ -459,7 +459,8 @@
 
       const appUrl = encodeURIComponent(window.location.href.split('?')[0]);
       let url = `${SETTINGS.GAS_URL}?uid=${MY_LINE_ID}&action=get&mode=${IS_VIEW_MODE ? 'view' : 'edit'}&appUrl=${appUrl}&v=${Date.now()}`;
-     
+      console.log(SETTINGS.GAS_URL);
+      
       if (targetDateStr) {
         url += `&targetDate=${targetDateStr}`;
       }
@@ -533,14 +534,14 @@
           });
         }
 
-      } catch (err) {
+      } catch (e) {
         if (retryCount < 2) {
           // エラー時は500ms待ってから再試行
           await new Promise(resolve => setTimeout(resolve, 500));
           return await fetchData(retryCount + 1, targetDateStr);
         }
         document.getElementById("loading").style.display = "none";
-        console.error(err);
+        console.error(e);
         alert("通信エラー、またはタイムアウトが発生しました\n電波の良い所で再読み込みしてください");
       }
     }
@@ -565,10 +566,10 @@
         
         const formData = new URLSearchParams();
       
-        formData.append("action", "link");
+        formData.append("action", "update_all");
         formData.append("uid", MY_LINE_ID);
         formData.append("idToken", ID_TOKEN);
-        formData.append("family_id", sid);
+        formData.append("payload", JSON.stringify(payload));
       
         const res = await fetchWithTimeout(
           SETTINGS.GAS_URL,
@@ -584,10 +585,10 @@
           throw new Error(data.message || "登録失敗");
         }
         
-        window.location.replace(window.location.href.split('?')[0]); // 登録成功後、画面をリロードしてメイン画面へ
+        window.location.replace(window.location.pathname); // 登録成功後、画面をリロードしてメイン画面へ
       
-      } catch (err) {
-        alert("登録エラーが発生しました\n\n" + err.message);
+      } catch (e) {
+        alert("登録エラーが発生しました\n\n" + e.message);
         document.getElementById("loading").style.display = "none";
       }
     }
@@ -653,21 +654,24 @@
         formData.append("idToken", ID_TOKEN);
         formData.append("payload", JSON.stringify(payload));
 
+        console.log("POST START");
+
         await fetchWithTimeout(
           SETTINGS.GAS_URL,
           {
             method: "POST",
-//            mode: "no-cors",  // no-cors:GAS側レスポンスは取得できないが、LIFF + GAS 環境で送信成功率を優先
+            mode: "no-cors",
             body: formData
           }
         );
+        console.log("POST SENT");
 
         // 保存完了後、少し待ってからウィンドウを閉じる
         setTimeout(() => {liff.closeWindow();}, 500);
 
-      } catch (err) {
+      } catch (e) {
 
-        console.error(err);
+        console.error(e);
         alert(
           "保存エラーが発生しました\n\n" +
           "通信環境を確認して再度お試しください"
@@ -1318,3 +1322,4 @@
   </script>
 </body>
 </html>
+
