@@ -411,8 +411,7 @@
           throw new Error("LINE認証情報取得失敗");
         }
         MY_LINE_ID = profile.sub;
-        // 追加
-        ID_TOKEN = liff.getIDToken();
+        ID_TOKEN = liff.getIDToken();    // 追加
         
         await fetchData(); 
         
@@ -566,10 +565,10 @@
         
         const formData = new URLSearchParams();
       
-        formData.append("action", "update_all");
+        formData.append("action", "link");
         formData.append("uid", MY_LINE_ID);
         formData.append("idToken", ID_TOKEN);
-        formData.append("payload", JSON.stringify(payload));
+        formData.append"family_id", sid);
       
         const res = await fetchWithTimeout(
           SETTINGS.GAS_URL,
@@ -584,8 +583,8 @@
         if (data.status !== "success") {
           throw new Error(data.message || "登録失敗");
         }
-        
-        window.location.replace(window.location.pathname); // 登録成功後、画面をリロードしてメイン画面へ
+        //location.reload();
+        window.location.replace(window.location.href.split('?')[0]);   // 登録成功後、画面をリロードしてメイン画面へ
       
       } catch (e) {
         alert("登録エラーが発生しました\n\n" + e.message);
@@ -654,18 +653,15 @@
         formData.append("idToken", ID_TOKEN);
         formData.append("payload", JSON.stringify(payload));
 
-        console.log("POST START");
-
         await fetchWithTimeout(
           SETTINGS.GAS_URL,
           {
             method: "POST",
-            mode: "no-cors",
+            mode: "no-cors",    // GAS側レスポンスは取得できないが、LIFF + GAS 環境で送信成功率を優先
             body: formData
           }
         );
-        console.log("POST SENT");
-
+        
         // 保存完了後、少し待ってからウィンドウを閉じる
         setTimeout(() => {liff.closeWindow();}, 500);
 
