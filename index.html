@@ -659,7 +659,7 @@
           SETTINGS.GAS_URL,
           {
             method: "POST",
-            //mode: "no-cors",  // no-cors:GAS側レスポンスは取得できないが、LIFF + GAS 環境で送信成功率を優先
+            mode: "no-cors",  // no-cors:GAS側レスポンスは取得できないが、LIFF + GAS 環境で送信成功率を優先
             body: formData
           }
         );
