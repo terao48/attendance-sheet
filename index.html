@@ -734,8 +734,11 @@
           throw new Error(data.message || "保存失敗");
         }
         // 保存完了後、少し待ってからウィンドウを閉じる
-        setTimeout(() => {liff.closeWindow();}, 500);
-
+        document.getElementById("loadingText").innerText = "保存完了しました";
+        setTimeout(() => {
+          liff.closeWindow();
+        }, 1200);
+        
       } catch (e) {
 
         console.error(e);
