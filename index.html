@@ -327,12 +327,50 @@
   * ・GASと通信しデータ取得/更新を行う
   * ・閲覧モード／編集モード切替対応
   * ==========================================
+  *
+  *1. 汎用Utility
+  * - escapeHtml
+  * - escapeJsString
+  * - fetchWithTimeout
+  *
+  *2. 初期化/通信
+  * - init
+  * - fetchData
+  * - link
+  * - saveAll
+  *
+  *3. 閲覧モード系
+  * - initDateDropdowns
+  * - updateMondays
+  * - setDropdownsToDate
+  * - fetchPastData
+  *
+  *4. 描画/UI更新
+  * - render
+  * - updateHeaderCounts
+  * - toggle
+  *
+  *5. コメントモーダル
+  * - openModal
+  * - viewModal
+  * - applyComment
+  * - closeModal
+  *
+  *6. スクロール制御
+  * - checkScroll
+  * - slowScrollToBottom
+  *
+  *7. イベント登録
+  * - window load/init
+  *
   */
-
+    
     /* ===================================================
      Level 2: 設定・状態管理　（定数・全体変数定義）
     =================================================== */
-    // GASのURLとLIFF IDの設定
+    // GAS通信先・LIFF設定
+    // ⚠ GAS_URL / LIFF_ID は本番環境識別子
+    // ・変更時はGAS/LINE Developers側設定と必ず同期
     const SETTINGS = {
       GAS_URL: "https://script.google.com/macros/s/AKfycbz4M2wVSJmz1WwE5Aevak9JN0MPZTlbNeYiPDRaFATwtrF2vJdRh2zxIgGnJe05iNoe/exec",
       LIFF_ID: "2009266487-GEiMe9Ei"
@@ -340,7 +378,9 @@
 
     const APP_TITLE = "父出欠確認アプリ";
     
-    // 記号とラベルのマッピング設定
+    // UI表示記号定義
+    // ⚠ 配列順が toggle() の循環順に直結
+    // ・変更時はGAS側集計仕様と同期必須
     const UI_CONFIG = {
       signs: ["〇", "△", "×", "-"],
       labels: { "〇": "参加", "△": "遅参", "×": "欠席", "-": "未回答" }
@@ -349,7 +389,7 @@
     let ID_TOKEN = "";
     let MY_LINE_ID = "";       // LINEユーザーID
     let IS_VIEW_MODE = false;  // 閲覧モードかどうかのフラグ
-    let DEADLINE_HOUR = 23;    // デフォルトの回答期限（前日23時）
+    let DEADLINE_HOUR = 23;    // デフォルトの回答期限（前日23時） GAS設定値で上書きされる
     let WEEK_LABEL = "";       // 対象週のラベル（例: 2026/04/13〜）
     let BASE_DATE_STR = "";
     let days = [];             // 日付データの配列
@@ -367,19 +407,63 @@
     =================================================== */
     
     /* ===================================================
-       1. 初期化処理（LIFFログイン → データ取得）
+       1. 汎用Utility
     =================================================== */
 
     function escapeHtml(str) {
-      if (str === null || str === undefined) return '';
+      if (str === null || str === undefined){
+        return '';
+      }
       return String(str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    }
+
+    function escapeJsString(str) {
+      return String(str || "")
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "");
+    }
+
+    /**
+     * 指定されたURLに対してfetch通信を行い、指定時間を超えた場合はタイムアウトさせます。
+     * 電波の悪い環境で通信が永遠に止まるのを防ぎます。
+     * @param {string} url - 通信先のURL
+     * @param {Object} options - fetchのオプション（省略可）
+     * @param {number} timeout - タイムアウトまでのミリ秒数（デフォルト15秒）
+     * @returns {Promise<Response>} サーバーからのレスポンス
+     */
+    async function fetchWithTimeout(url, options = {}, timeout = 15000) {
+      // AbortController により一定時間で通信を強制停止
+      // LIFF + モバイル回線環境で fetch が無限待機化するのを防止
+      const controller = new AbortController();
+      
+      // timeout 経過時に abort 実行
+      const id = setTimeout(() => controller.abort(), timeout);
+      
+      try {
+        // signal を fetch に紐付けてタイムアウト制御
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+      
+      } catch (e) {
+      
+        clearTimeout(id);
+        if (e.name === 'AbortError') throw new Error("通信タイムアウト");
+        throw e;
       }
-    
+    }
+
+    /* ===================================================
+       2. 初期化/通信（LIFFログイン → データ取得）
+    =================================================== */
     /**
      * アプリ起動時の初期化処理を行います。
      * 1. URLパラメータから閲覧モードかどうかを判定します。
@@ -422,27 +506,6 @@
       }
     }
 
-    /**
-     * 指定されたURLに対してfetch通信を行い、指定時間を超えた場合はタイムアウトさせます。
-     * 電波の悪い環境で通信が永遠に止まるのを防ぎます。
-     * @param {string} url - 通信先のURL
-     * @param {Object} options - fetchのオプション（省略可）
-     * @param {number} timeout - タイムアウトまでのミリ秒数（デフォルト15秒）
-     * @returns {Promise<Response>} サーバーからのレスポンス
-     */
-    async function fetchWithTimeout(url, options = {}, timeout = 15000) {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeout);
-      try {
-        const response = await fetch(url, { ...options, signal: controller.signal });
-        clearTimeout(id);
-        return response;
-      } catch (e) {
-        clearTimeout(id);
-        if (e.name === 'AbortError') throw new Error("通信タイムアウト");
-        throw e;
-      }
-    }
 
     /**
      * サーバー(GAS)から出欠データを取得します。
@@ -610,7 +673,11 @@
         return;
       }
       
-      // GASへ送信するpayload生成
+      // GAS processUpdateAll 用 payload生成
+      // ⚠ key名変更禁止
+      // ・dateKey ベースで保存
+      // ・weekId は週単位識別子
+      // ・status/comment は1日単位      
       const payload = days.map((d) => {
         const key = d.dateKey;         // dateKeyへ変更
         
@@ -641,14 +708,14 @@
         formData.append("idToken", ID_TOKEN);
         formData.append("payload", JSON.stringify(payload));
 
-        await fetchWithTimeout(
-          SETTINGS.GAS_URL,
-          {
-            method: "POST",
+//        await fetchWithTimeout(
+//          SETTINGS.GAS_URL,
+//          {
+//            method: "POST",
 //            mode: "no-cors",    // GAS側レスポンスは取得できないが、LIFF + GAS 環境で送信成功率を優先
-            body: formData
-          }
-        );
+//            body: formData
+//          }
+//        );
         
         const res = await fetchWithTimeout(
           SETTINGS.GAS_URL,
@@ -683,52 +750,8 @@
     }
 
 
-    // ヘッダー人数更新関数追加
-    function updateHeaderCounts() {
-      const totals = days.map(() => {
-        let obj = {};
-        UI_CONFIG.signs.forEach(s => obj[s] = 0);
-        return obj;
-      });
-
-      rawData.forEach(f => {
-        days.forEach((d, i) => {
-
-          const key = d.dateKey;
-          const s = f.statuses?.[key] || "-";
-
-          if (Object.prototype.hasOwnProperty.call(totals[i], s)) {
-            totals[i][s]++;
-          }
-        });
-
-      });
-
-      const headers = document.querySelectorAll("thead th");
-      days.forEach((d, i) => {
-        const th = headers[i + 1];
-    
-        if (!th) return;
-        const countBox = th.querySelector(".count-box");
-        if (!countBox) return;    let html = "";
-
-      UI_CONFIG.signs.forEach(s => {
-        html += `
-          <div class="count-row">
-            <span>${s}${UI_CONFIG.labels[s]}</span>
-            <span>${totals[i][s]}</span>
-          </div>
-        `;
-      });
-
-    countBox.innerHTML = html;
-
-  });
-}
-
-    
     /* ===================================================
-       2. 過去データ閲覧モード用関数
+       3. 閲覧モード系
     =================================================== */
     /**
      * ==============================================================================
@@ -841,7 +864,8 @@
     function setDropdownsToDate(dateStr) {
       if (!dateStr) return;
       const parts = dateStr.split("-");
-      const y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
+      //const y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
+      const y = parseInt(parts[0], 10), m = parseInt(parts[1], 10), d = parseInt(parts[2], 10);
   
       // ----------------------------------------------------------------------------
       //  1. リストの全生成（ここが修正の核）
@@ -889,20 +913,8 @@
 
 
     /* ===================================================
-       Level 4: UI操作・補助処理
+       4. 描画/UI更新
     =================================================== */
-
-    /* ===================================================
-       3. メインUI描画・操作関数
-    =================================================== */
-    function escapeJsString(str) {
-      return String(str || "")
-        .replace(/\\/g, "\\\\")
-        .replace(/'/g, "\\'")
-        .replace(/"/g, '\\"')
-        .replace(/\n/g, "\\n")
-        .replace(/\r/g, "");
-    }
     
     /**
      * 取得したデータ（rawData）を元に、HTMLのテーブル構造を生成し画面に描画します。
@@ -927,6 +939,7 @@
       const savedScrollLeft = area ? area.scrollLeft : 0;
       
       if (!days || days.length === 0) {
+        // 日付データ未取得時は描画中断
         if (area) {
           area.scrollTop = savedScrollTop;
           area.scrollLeft = savedScrollLeft;
@@ -1088,18 +1101,25 @@
 //      render(); // 変更を反映するために再描画
 
       // =========================
-      // セルのみ更新
+      // セルのみ差分更新
       // =========================
+      // render() 全体再描画を行うと、
+      // ・スクロール位置ジャンプ
+      // ・iOS描画チラつき
+      // ・入力操作中の視認性低下
+      // が発生しやすいため、
+      // 対象セルのみDOM更新する
       const cell = document.querySelector(
         `[data-fidx="${fIdx}"][data-didx="${dIdx}"]`
       );
 
       if (cell) {
-        // class整理
+        // 既存 status-* class を除去
         UI_CONFIG.signs.forEach(sign => {
           cell.classList.remove(`status-${sign}`);
         });
-
+        
+        // 新しい状態classを付与して表示更新
         cell.classList.add(`status-${next}`);
         cell.textContent = next;
       }  
@@ -1109,12 +1129,64 @@
       // =========================
       updateHeaderCounts();
     }
+   
 
+    /**
+     * 日付ヘッダー内の人数集計表示のみを再計算して更新します。
+     * render() 全体を再実行せず、ヘッダー部分だけ差分更新することで
+     * スクロール位置ジャンプや再描画負荷を防止します。
+     *
+     * ⚠ 注意:
+     * ・rawData / days 構造に依存
+     * ・UI_CONFIG.signs の順序変更時は表示順も変化
+     */
+    function updateHeaderCounts() {
+      const totals = days.map(() => {
+        let obj = {};
+        UI_CONFIG.signs.forEach(s => obj[s] = 0);
+        return obj;
+      });
 
+      rawData.forEach(f => {
+        days.forEach((d, i) => {
+
+          const key = d.dateKey;
+          const s = f.statuses?.[key] || "-";
+
+          if (Object.prototype.hasOwnProperty.call(totals[i], s)) {
+            totals[i][s]++;
+          }
+        });
+
+      });
+
+      const headers = document.querySelectorAll("thead th");
+      days.forEach((d, i) => {
+        const th = headers[i + 1];
+    
+        if (!th) return;
+        const countBox = th.querySelector(".count-box");
+        
+        if (!countBox) return;
+        let html = "";
+
+      UI_CONFIG.signs.forEach(s => {
+        html += `
+          <div class="count-row">
+            <span>${s}${UI_CONFIG.labels[s]}</span>
+            <span>${totals[i][s]}</span>
+          </div>
+        `;
+      });
+
+      countBox.innerHTML = html;
+      });
+    }  
+
+    
     /* ===================================================
-       4. モーダル操作関連
+       5. コメントモーダル
     =================================================== */
-
     /**
      * コメント編集用のモーダルウィンドウを開きます。
      * @param {number} fIdx - 編集対象の団員のインデックス
@@ -1183,7 +1255,7 @@
       
       hasChanges = true;
 
-      // コメントアイコンだけ更新
+      // render() 全体再描画を避け、コメントアイコン部分のみ差分更新
       const td = document.querySelector(
         `[data-comment-fidx="${currentEditFIdx}"][data-comment-didx="${currentEditDIdx}"]`
       );
@@ -1212,9 +1284,8 @@
 
 
     /* ===================================================
-       5. スクロール制御関連
+       6. スクロール制御
     =================================================== */
-
     /**
      * 画面のスクロール位置を判定し、「下に続きがあります」インジケーターの表示/非表示を切り替えます。
      * リストが一番下までスクロールされるとインジケーターが消えます。
@@ -1223,7 +1294,8 @@
       const area = document.getElementById("content-area");
       const indicator = document.getElementById("scrollIndicator");
       if (!area || !indicator) return;
-      
+
+      // 小数誤差でインジケーターが点滅するのを防ぐため丸める
       const scrollH = Math.round(area.scrollHeight);
       const clientH = Math.round(area.clientHeight);
       const scrollT = Math.round(area.scrollTop);
